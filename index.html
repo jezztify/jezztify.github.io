@@ -22,397 +22,513 @@
         }
 
         .App {
+            text-align: center;
+            font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
-            font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
-            margin: 0 auto;
-            max-width: 1200px;
-            min-height: 100vh;
-            text-align: center
         }
 
         .App-header {
             background-color: #4a2416;
-            color: #fff;
+            padding: 1.5rem 0;
             margin-bottom: 1.5rem;
-            padding: 1.5rem 0
+            color: white;
         }
 
         .App-header h1 {
+            margin: 0;
             font-size: 2.5rem;
             font-weight: 600;
-            margin: 0
         }
 
         .stations-container {
-            align-items: center;
+            flex: 1;
             display: flex;
-            flex: 1 1;
             flex-direction: column;
-            padding: 0 1rem
+            align-items: center;
+            padding: 0 1rem;
         }
 
         .station-card {
             background-color: #fff;
             border-radius: 8px;
-            box-shadow: 0 4px 12px #0000001a;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
             margin-bottom: 2rem;
             max-width: 800px;
-            padding: 2rem;
-            width: 100%
+            width: 100%;
         }
 
         .station-card h2 {
             color: #4a2416;
             font-size: 1.8rem;
-            margin-bottom: .5rem
+            margin-bottom: 0.5rem;
         }
 
         .station-card h3 {
             color: #634832;
             font-size: 1.5rem;
-            font-style: italic;
+            margin-top: 0;
             margin-bottom: 1.5rem;
-            margin-top: 0
+            font-style: italic;
         }
 
         .station-description {
-            color: #333;
-            line-height: 1.6;
+            text-align: left;
             margin-bottom: 2rem;
-            text-align: left
+            line-height: 1.6;
+            color: #333;
         }
 
         .prayer-section {
             background-color: #f9f3e7;
-            border-left: 4px solid #a67c52;
-            border-radius: 6px;
             padding: 1.5rem;
-            text-align: left
+            border-radius: 6px;
+            text-align: left;
+            border-left: 4px solid #a67c52;
         }
 
         .prayer-section h4 {
             color: #4a2416;
+            margin-top: 0;
+            margin-bottom: 0.5rem;
             font-size: 1.2rem;
-            margin-bottom: .5rem;
-            margin-top: 0
         }
 
         .prayer-section p {
-            color: #555;
+            margin: 0;
             font-style: italic;
+            color: #555;
             line-height: 1.6;
-            margin: 0
         }
 
         .navigation-controls {
-            align-items: center;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 2rem;
+            align-items: center;
+            width: 100%;
             max-width: 800px;
-            width: 100%
+            margin-bottom: 2rem;
         }
 
         .nav-button {
             background-color: #a67c52;
+            color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
             font-size: 1rem;
-            padding: .8rem 1.5rem;
-            transition: background-color .3s
+            transition: background-color 0.3s;
         }
 
         .nav-button:hover:not(:disabled) {
-            background-color: #845c32
+            background-color: #845c32;
         }
 
         .nav-button:disabled {
             background-color: #d3c0aa;
-            cursor: not-allowed
+            cursor: not-allowed;
         }
 
         .station-indicator {
-            color: #634832;
             font-size: 1.1rem;
-            font-weight: 600
+            color: #634832;
+            font-weight: 600;
         }
 
         footer {
             background-color: #f9f3e7;
+            padding: 1.2rem 0;
             color: #634832;
             margin-top: auto;
-            padding: 1.2rem 0
         }
 
         .map-toggle-button {
             background-color: #4a2416;
+            color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
             font-size: 1rem;
-            margin-bottom: 1rem;
             margin-top: 1.5rem;
-            padding: .8rem 1.5rem;
-            transition: background-color .3s
+            margin-bottom: 1rem;
+            transition: background-color 0.3s;
         }
 
         .map-toggle-button:hover {
-            background-color: #634832
+            background-color: #634832;
         }
 
         .map-container {
-            border-radius: 8px;
-            box-shadow: 0 4px 12px #0000001a;
             margin-top: 1.5rem;
-            overflow: hidden
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .map-note {
-            color: #634832;
-            font-size: .9rem;
             font-style: italic;
-            margin-top: .5rem;
-            text-align: center
+            color: #634832;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            text-align: center;
         }
 
+        /* Main navigation tabs */
         .main-nav {
             display: flex;
             justify-content: center;
-            margin-top: 1rem
+            margin-top: 1rem;
         }
 
         .nav-tab {
-            background-color: #fff3;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
+            margin: 0 0.5rem;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
             font-size: 1rem;
-            margin: 0 .5rem;
-            padding: .8rem 1.5rem;
-            transition: background-color .3s
+            transition: background-color 0.3s;
         }
 
         .nav-tab.active {
             background-color: #a67c52;
-            font-weight: 700
+            font-weight: bold;
         }
 
         .nav-tab:hover:not(.active) {
-            background-color: #ffffff4d
+            background-color: rgba(255, 255, 255, 0.3);
         }
 
         .main-content {
-            align-items: center;
+            flex: 1;
             display: flex;
-            flex: 1 1;
             flex-direction: column;
-            padding: 0 1rem
+            align-items: center;
+            padding: 0 1rem;
         }
 
+        /* Churches container */
         .churches-container {
-            margin: 0 auto;
+            width: 100%;
             max-width: 1000px;
-            width: 100%
+            margin: 0 auto;
         }
 
         .churches-intro {
             color: #634832;
-            margin-bottom: 2rem
+            margin-bottom: 2rem;
         }
 
+        /* Visit progress styles */
         .visit-progress {
             background-color: #f9f3e7;
             border-radius: 8px;
-            box-shadow: 0 2px 8px #0000001a;
+            padding: 1.5rem;
             margin-bottom: 2rem;
-            padding: 1.5rem
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .visit-progress h3 {
             color: #4a2416;
+            margin-top: 0;
             margin-bottom: 1rem;
-            margin-top: 0
         }
 
         .progress-bar-container {
+            width: 100%;
+            height: 20px;
             background-color: #e9e0d1;
             border-radius: 10px;
-            height: 20px;
-            margin-bottom: .5rem;
             overflow: hidden;
-            width: 100%
+            margin-bottom: 0.5rem;
         }
 
         .progress-bar {
+            height: 100%;
             background-color: #4a2416;
             border-radius: 10px;
-            height: 100%;
-            transition: width .5s ease-in-out
+            transition: width 0.5s ease-in-out;
         }
 
         .completion-message {
             background-color: #fff;
-            border: 1px solid #a67c52;
             border-radius: 8px;
+            padding: 1rem;
             margin-top: 1rem;
-            padding: 1rem
+            border: 1px solid #a67c52;
         }
 
         .completion-icon {
-            display: block;
             font-size: 2rem;
-            margin-bottom: .5rem
+            display: block;
+            margin-bottom: 0.5rem;
         }
 
+        /* Church selection styles */
         .church-selection {
             display: flex;
             flex-wrap: wrap;
             gap: 1.5rem;
             justify-content: center;
-            margin-bottom: 2rem
+            margin-bottom: 2rem;
         }
 
         .church-card {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px #0000001a;
-            cursor: pointer;
+            width: 230px;
             height: 200px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            background-color: #fff;
             position: relative;
-            transition: transform .3s, box-shadow .3s;
-            width: 230px
+            cursor: pointer;
         }
 
         .church-card:hover {
-            box-shadow: 0 5px 15px #0003;
-            transform: translateY(-5px)
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .church-image-container {
+            width: 100%;
             height: 130px;
             overflow: hidden;
             position: relative;
-            width: 100%
         }
 
         .church-image {
+            width: 100%;
             height: 100%;
-            transition: transform .3s;
-            width: 100%
+            transition: transform 0.3s;
         }
 
         .church-card:hover .church-image {
-            transform: scale(1.05)
+            transform: scale(1.05);
         }
 
         .church-image-placeholder {
-            display: none
+            display: none;
         }
 
         .church-card-visited {
-            align-items: center;
-            background-color: #4caf50;
-            border-radius: 50%;
-            box-shadow: 0 2px 5px #0003;
-            color: #fff;
-            display: flex;
-            font-size: 1rem;
-            height: 30px;
-            justify-content: center;
             position: absolute;
-            right: 10px;
             top: 10px;
-            width: 30px
+            right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         .church-info {
-            padding: 1rem
+            padding: 1rem;
         }
 
         .church-name {
+            margin: 0 0 0.5rem 0;
             color: #4a2416;
             font-size: 1.2rem;
-            margin: 0 0 .5rem
         }
 
         .church-address {
+            font-size: 0.9rem;
             color: #666;
-            font-size: .9rem;
+            margin-bottom: 0;
             line-height: 1.3;
-            margin-bottom: 0
         }
 
+        /* Church profile styles */
         .church-profile {
             background-color: #fff;
             border-radius: 8px;
-            box-shadow: 0 4px 12px #0000001a;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             margin-bottom: 2rem;
+            width: 100%;
             overflow: hidden;
-            width: 100%
         }
 
         .church-profile-content {
-            padding: 2rem
+            padding: 2rem;
         }
 
         .church-profile-header {
-            align-items: center;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1rem
+            align-items: center;
+            margin-bottom: 1rem;
         }
 
         .church-profile-header h2 {
+            margin: 0;
             color: #4a2416;
-            margin: 0
         }
 
         .visit-button {
             background-color: #a67c52;
+            color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
             font-size: 1rem;
-            padding: .8rem 1.5rem;
-            transition: background-color .3s
+            transition: background-color 0.3s;
         }
 
         .visit-button:hover {
-            background-color: #845c32
+            background-color: #845c32;
         }
 
         .visit-button.visited {
-            background-color: #4caf50
+            background-color: #4CAF50;
         }
 
         .church-details {
             background-color: #f9f3e7;
-            border-left: 4px solid #a67c52;
+            padding: 1.5rem;
             border-radius: 6px;
             margin: 1.5rem 0;
-            padding: 1.5rem
+            border-left: 4px solid #a67c52;
         }
 
         .directions-button {
             background-color: #4a2416;
+            color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
             font-size: 1rem;
-            padding: .8rem 1.5rem;
-            transition: background-color .3s
+            transition: background-color 0.3s;
         }
 
         .directions-button:hover {
-            background-color: #634832
+            background-color: #634832;
+        }
+
+        /* Style for the novena section */
+        .novena-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .novena-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .novena-card h2 {
+            color: #4a2416;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            border-bottom: 2px solid #e9e0d1;
+            padding-bottom: 10px;
+        }
+
+        .novena-content {
+            line-height: 1.7;
+        }
+
+        .novena-paragraph {
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            text-align: justify;
+        }
+
+        .novena-images {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+
+        .novena-image {
+            width: 30%;
+            min-width: 250px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .novena-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+
+        .novena-image img:hover {
+            transform: scale(1.03);
+        }
+
+        .image-caption {
+            padding: 10px;
+            background: #4a2416;
+            color: white;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .novena-background {
+            background-color: #f8f5f0;
+            border-left: 4px solid #4a2416;
+            padding: 15px;
+            margin-top: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .novena-background h4 {
+            color: #4a2416;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        /* Media queries for responsive design */
+        @media (max-width: 768px) {
+            .novena-images {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .novena-image {
+                width: 90%;
+                max-width: 400px;
+            }
+
+            .church-profile-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .visit-button {
+                margin-top: 1rem;
+            }
+
+            .nav-tab {
+                padding: 0.5rem 0.8rem;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
@@ -423,7 +539,7 @@
 
     <!-- Inlined JavaScript for the application -->
     <script>
-        // Self-executing function to create Visita Iglesia app
+        // Self-executing function to create Stations of the Cross app
         (function () {
             // Data for the 14 Stations of the Cross
             const stationsData = [
@@ -534,7 +650,7 @@
                     name: "St Mark's Catholic Mission Church",
                     address: "Pakuranga Road, Pakuranga Heights, Auckland",
                     description: "A beautiful mission church serving the Catholic community in East Auckland.",
-                    imageUrl: "https://images.unsplash.com/photo-1503031897894-f546922273f9?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/st-marks.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "7:00 AM - 7:00 PM daily",
                     coordinates: { lat: -36.9015124, lng: 174.8970172 }
@@ -544,7 +660,7 @@
                     name: "Our Lady Star of the Sea",
                     address: "Howick, Auckland",
                     description: "A parish church overlooking the Hauraki Gulf known for its beautiful stained glass.",
-                    imageUrl: "https://images.unsplash.com/photo-1545975420-a2f4cb71964d?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/our-lady.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "6:30 AM - 8:00 PM daily",
                     coordinates: { lat: -36.8931307, lng: 174.9308247 }
@@ -554,7 +670,7 @@
                     name: "St Luke's Catholic Church",
                     address: "Flat Bush, Auckland",
                     description: "A vibrant parish serving the growing community in South Auckland.",
-                    imageUrl: "https://images.unsplash.com/photo-1588927330053-5ab89e324c09?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/st-lukes.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "7:00 AM - 8:00 PM daily",
                     coordinates: { lat: -36.9607972, lng: 174.9069463 }
@@ -564,7 +680,7 @@
                     name: "Catholic Church of the Assumption",
                     address: "Onehunga, Auckland",
                     description: "A historic church with a strong tradition of Lenten devotions.",
-                    imageUrl: "https://images.unsplash.com/photo-1475091360677-39a341447f49?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/assumption.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "6:00 AM - 7:30 PM daily",
                     coordinates: { lat: -36.9225013, lng: 174.7881539 }
@@ -574,7 +690,7 @@
                     name: "St Patrick's Cathedral",
                     address: "Auckland CBD",
                     description: "The mother church of the Catholic Diocese of Auckland with beautiful architecture.",
-                    imageUrl: "https://images.unsplash.com/photo-1528908929486-dfaa209c6986?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/st-patricks.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "6:30 AM - 9:00 PM daily",
                     coordinates: { lat: -36.8504963, lng: 174.7651967 }
@@ -584,7 +700,7 @@
                     name: "St Benedict's Catholic Church",
                     address: "Newton, Auckland",
                     description: "A historic church known for its traditional liturgies and devotions.",
-                    imageUrl: "https://images.unsplash.com/photo-1599837487527-e43c4e9bc8ad?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/st-benedicts.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "7:00 AM - 7:00 PM daily",
                     coordinates: { lat: -36.8586121, lng: 174.7594232 }
@@ -594,12 +710,46 @@
                     name: "St Joseph's Catholic Church",
                     address: "Grey Lynn, Auckland",
                     description: "A welcoming parish with a focus on community outreach and spiritual formation.",
-                    imageUrl: "https://images.unsplash.com/photo-1513783371732-4b8aaa8e62d0?auto=format&fit=crop&w=800&q=80",
+                    imageUrl: "images/st-josephs.jpg",
                     availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
                     openingHours: "7:00 AM - 8:00 PM daily",
                     coordinates: { lat: -36.8613872, lng: 174.7343853 }
+                },
+                {
+                    id: 8,
+                    name: "St Raphael's Catholic Church",
+                    address: "Remuera, Auckland",
+                    description: "A vibrant community of faith focused on prayer, worship, and service to others.",
+                    imageUrl: "images/st-raphael/raphael1.jpg",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "6:30 AM - 8:30 PM daily",
+                    coordinates: { lat: -36.8789596, lng: 174.8127288 }
                 }
             ];
+
+            // Novena to St. Raphael content
+            const novenaContent = {
+                title: "Novena to St. Raphael",
+                content: `Glorious Archangel Saint Raphael, great prince of the heavenly court, you are illustrious for your gifts of wisdom and grace.
+
+You are a guide of those who journey by land or sea or air, consoler of the afflicted, and refuge of sinners. I beg you, assist me in all my needs and in all the sufferings of this life, as once you helped the young Tobias on his travels.
+
+Because you are the medicine of God, I humbly pray you to heal the many infirmities of my soul and the ills that afflict my body. I especially ask of you the favor (mention your request here) and the great grace of purity to prepare me to be the temple of the Holy Spirit.
+
+Let us pray:
+St. Raphael, of the glorious seven who stand before the throne of Him who lives and reigns, Angel of health, the Lord has filled your hand with balm from heaven to soothe or cure our pains. Heal or cure the victim of disease, and guide our steps when doubtful of our ways.`,
+                images: [
+                    {
+                        url: "images/st-raphael/raphael1.jpg",
+                        caption: "St. Raphael the Archangel"
+                    },
+                    {
+                        url: "images/st-raphael/raphael2.jpg",
+                        caption: "St. Raphael with Tobias"
+                    }
+                ],
+                background: "St. Raphael is one of the seven Archangels who stand before the throne of God. His name means 'God heals' or 'Medicine of God'. In the Book of Tobit, he guides and protects Tobias on his journey and heals his father's blindness. St. Raphael is the patron saint of travelers, the blind, healers, and happy meetings."
+            };
 
             // Initialize the application
             document.addEventListener('DOMContentLoaded', function () {
@@ -612,13 +762,12 @@
                     this.currentStationIndex = 0;
                     this.visitedChurches = [];
                     this.selectedChurch = null;
-                    this.activeTab = 'stations'; // 'stations', 'churches'
+                    this.activeTab = 'stations'; // 'stations', 'churches', 'novena'
                 }
 
                 initialize() {
                     this.loadVisitedChurches();
                     this.renderApp();
-                    this.setupEventListeners();
                 }
 
                 loadVisitedChurches() {
@@ -669,163 +818,201 @@
                 renderApp() {
                     const rootElement = document.getElementById('root');
                     rootElement.innerHTML = `
-        <div class="App">
-          <header class="App-header">
-            <h1>Visita Iglesia</h1>
-            <nav class="main-nav">
-              <button 
-                class="nav-tab ${this.activeTab === 'stations' ? 'active' : ''}"
-                id="stations-tab"
-              >
-                Stations of the Cross
-              </button>
-              <button 
-                class="nav-tab ${this.activeTab === 'churches' ? 'active' : ''}"
-                id="churches-tab"
-              >
-                Churches
-              </button>
-            </nav>
-          </header>
-          <main class="main-content">
-            ${this.activeTab === 'stations' ? this.renderStationsTab() : this.renderChurchesTab()}
-          </main>
-          <footer>
-            <p>© ${new Date().getFullYear()} Visita Iglesia | Stations of the Cross</p>
-          </footer>
-        </div>
-      `;
+                        <div class="App">
+                            <header class="App-header">
+                                <h1>Visita Iglesia</h1>
+                                <nav class="main-nav">
+                                    <button 
+                                        class="nav-tab ${this.activeTab === 'stations' ? 'active' : ''}"
+                                        id="stations-tab"
+                                    >
+                                        Stations of the Cross
+                                    </button>
+                                    <button 
+                                        class="nav-tab ${this.activeTab === 'churches' ? 'active' : ''}"
+                                        id="churches-tab"
+                                    >
+                                        Churches
+                                    </button>
+                                    <button 
+                                        class="nav-tab ${this.activeTab === 'novena' ? 'active' : ''}"
+                                        id="novena-tab"
+                                    >
+                                        Novena to St. Raphael
+                                    </button>
+                                </nav>
+                            </header>
+                            <main class="main-content">
+                                ${this.activeTab === 'stations' ? this.renderStationsTab() :
+                            this.activeTab === 'churches' ? this.renderChurchesTab() :
+                                this.renderNovenaTab()}
+                            </main>
+                            <footer>
+                                <p>© ${new Date().getFullYear()} Visita Iglesia | Stations of the Cross</p>
+                            </footer>
+                        </div>
+                    `;
                     this.setupEventListeners();
                 }
 
                 renderStationsTab() {
                     const currentStation = stationsData[this.currentStationIndex];
                     return `
-        <div class="stations-container">
-          <div class="station-card">
-            <h2>${currentStation.title}</h2>
-            <h3>${currentStation.subtitle}</h3>
-            <p class="station-description">${currentStation.description}</p>
-            <div class="prayer-section">
-              <h4>Prayer</h4>
-              <p>${currentStation.prayer}</p>
-            </div>
-          </div>
-          <div class="navigation-controls">
-            <button
-              id="prev-station-btn"
-              ${this.currentStationIndex === 0 ? 'disabled' : ''}
-              class="nav-button"
-            >
-              Previous Station
-            </button>
-            <span class="station-indicator">
-              Station ${currentStation.id} of ${stationsData.length}
-            </span>
-            <button
-              id="next-station-btn"
-              ${this.currentStationIndex === stationsData.length - 1 ? 'disabled' : ''}
-              class="nav-button"
-            >
-              Next Station
-            </button>
-          </div>
-        </div>
-      `;
+                        <div class="stations-container">
+                            <div class="station-card">
+                                <h2>${currentStation.title}</h2>
+                                <h3>${currentStation.subtitle}</h3>
+                                <p class="station-description">${currentStation.description}</p>
+                                <div class="prayer-section">
+                                    <h4>Prayer</h4>
+                                    <p>${currentStation.prayer}</p>
+                                </div>
+                            </div>
+                            <div class="navigation-controls">
+                                <button
+                                    id="prev-station-btn"
+                                    ${this.currentStationIndex === 0 ? 'disabled' : ''}
+                                    class="nav-button"
+                                >
+                                    Previous Station
+                                </button>
+                                <span class="station-indicator">
+                                    Station ${currentStation.id} of ${stationsData.length}
+                                </span>
+                                <button
+                                    id="next-station-btn"
+                                    ${this.currentStationIndex === stationsData.length - 1 ? 'disabled' : ''}
+                                    class="nav-button"
+                                >
+                                    Next Station
+                                </button>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 renderChurchesTab() {
                     return `
-        <div class="churches-container">
-          <h2>Auckland Catholic Churches</h2>
-          <p class="churches-intro">Visit seven churches and pray the Stations of the Cross for Visita Iglesia</p>
-          
-          <div class="visit-progress">
-            <h3>Your Visita Iglesia Progress</h3>
-            <div class="progress-bar-container">
-              <div 
-                class="progress-bar" 
-                style="width: ${Math.min((this.visitedChurches.length / 7) * 100, 100)}%"
-              ></div>
-            </div>
-            <p>${this.visitedChurches.length} of 7 churches visited</p>
-            ${this.visitedChurches.length === 7 ? `
-              <div class="completion-message">
-                <span class="completion-icon">✝️</span>
-                <p>Congratulations! You have completed your Visita Iglesia journey.</p>
-              </div>
-            ` : ''}
-          </div>
-          
-          <div class="church-selection">
-            ${churchesData.map(church => this.renderChurchCard(church)).join('')}
-          </div>
-          
-          ${this.selectedChurch ? this.renderChurchProfile(this.selectedChurch) : ''}
-        </div>
-      `;
+                        <div class="churches-container">
+                            <h2>Auckland Catholic Churches</h2>
+                            <p class="churches-intro">Visit seven churches and pray the Stations of the Cross for Visita Iglesia</p>
+                            
+                            <div class="visit-progress">
+                                <h3>Your Visita Iglesia Progress</h3>
+                                <div class="progress-bar-container">
+                                    <div 
+                                        class="progress-bar" 
+                                        style="width: ${Math.min((this.visitedChurches.length / 7) * 100, 100)}%"
+                                    ></div>
+                                </div>
+                                <p>${this.visitedChurches.length} of 7 churches visited</p>
+                                ${this.visitedChurches.length >= 7 ? `
+                                    <div class="completion-message">
+                                        <span class="completion-icon">✝️</span>
+                                        <p>Congratulations! You have completed your Visita Iglesia journey.</p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="church-selection">
+                                ${churchesData.map(church => this.renderChurchCard(church)).join('')}
+                            </div>
+                            
+                            ${this.selectedChurch ? this.renderChurchProfile(this.selectedChurch) : ''}
+                        </div>
+                    `;
+                }
+
+                renderNovenaTab() {
+                    return `
+                        <div class="novena-container">
+                            <div class="novena-card">
+                                <h2>${novenaContent.title}</h2>
+                                <div class="novena-content">
+                                    ${novenaContent.content.split('\n\n').map((paragraph, index) =>
+                        `<p key="${index}" class="novena-paragraph">${paragraph}</p>`
+                    ).join('')}
+                                    
+                                    <div class="novena-images">
+                                        ${novenaContent.images.map((image, index) => `
+                                            <div class="novena-image">
+                                                <img src="${image.url}" alt="${image.caption}" />
+                                                <p class="image-caption">${image.caption}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    
+                                    <div class="novena-background">
+                                        <h4>Background</h4>
+                                        <p>${novenaContent.background}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 renderChurchCard(church) {
                     const isVisited = this.visitedChurches.includes(church.id);
                     return `
-        <div class="church-card" data-church-id="${church.id}">
-          <div class="church-image-container">
-            <div
-              class="church-image"
-              style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center;"
-            >
-              ${isVisited ? '<div class="church-card-visited">✓</div>' : ''}
-            </div>
-          </div>
-          <div class="church-info">
-            <h3 class="church-name">${church.name}</h3>
-            <p class="church-address">${church.address}</p>
-          </div>
-        </div>
-      `;
+                        <div class="church-card" data-church-id="${church.id}">
+                            <div class="church-image-container">
+                                <div
+                                    class="church-image"
+                                    style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center;"
+                                >
+                                    ${isVisited ? '<div class="church-card-visited">✓</div>' : ''}
+                                </div>
+                            </div>
+                            <div class="church-info">
+                                <h3 class="church-name">${church.name}</h3>
+                                <p class="church-address">${church.address}</p>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 renderChurchProfile(church) {
                     const isVisited = this.visitedChurches.includes(church.id);
                     return `
-        <div class="church-profile">
-          <div 
-            style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center; height: 250px; border-radius: 8px 8px 0 0;"
-          ></div>
-          <div class="church-profile-content">
-            <div class="church-profile-header">
-              <h2>${church.name}</h2>
-              <button
-                class="visit-button ${isVisited ? 'visited' : ''}"
-                data-church-id="${church.id}"
-                id="toggle-visit-btn-${church.id}"
-              >
-                ${isVisited ? 'Visited ✓' : 'Mark as Visited'}
-              </button>
-            </div>
-            <p class="church-address">${church.address}</p>
-            <p class="church-description">${church.description}</p>
-            <div class="church-details">
-              <p><strong>Opening Hours:</strong> ${church.openingHours}</p>
-              <p><strong>Stations Available:</strong> All 14 Stations</p>
-            </div>
-            <button
-              class="directions-button"
-              data-church-address="${church.address}"
-              id="directions-btn-${church.id}"
-            >
-              Get Directions
-            </button>
-          </div>
-        </div>
-      `;
+                        <div class="church-profile">
+                            <div 
+                                style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center; height: 250px; border-radius: 8px 8px 0 0;"
+                            ></div>
+                            <div class="church-profile-content">
+                                <div class="church-profile-header">
+                                    <h2>${church.name}</h2>
+                                    <button
+                                        class="visit-button ${isVisited ? 'visited' : ''}"
+                                        data-church-id="${church.id}"
+                                        id="toggle-visit-btn-${church.id}"
+                                    >
+                                        ${isVisited ? 'Visited ✓' : 'Mark as Visited'}
+                                    </button>
+                                </div>
+                                <p class="church-address">${church.address}</p>
+                                <p class="church-description">${church.description}</p>
+                                <div class="church-details">
+                                    <p><strong>Opening Hours:</strong> ${church.openingHours}</p>
+                                    <p><strong>Stations Available:</strong> All 14 Stations</p>
+                                </div>
+                                <button
+                                    class="directions-button"
+                                    data-church-address="${church.address}"
+                                    id="directions-btn-${church.id}"
+                                >
+                                    Get Directions
+                                </button>
+                            </div>
+                        </div>
+                    `;
                 }
 
                 setupEventListeners() {
                     // Tab navigation
                     const stationsTab = document.getElementById('stations-tab');
                     const churchesTab = document.getElementById('churches-tab');
+                    const novenaTab = document.getElementById('novena-tab');
 
                     if (stationsTab) {
                         stationsTab.addEventListener('click', () => this.setActiveTab('stations'));
@@ -833,6 +1020,10 @@
 
                     if (churchesTab) {
                         churchesTab.addEventListener('click', () => this.setActiveTab('churches'));
+                    }
+
+                    if (novenaTab) {
+                        novenaTab.addEventListener('click', () => this.setActiveTab('novena'));
                     }
 
                     // Station navigation
@@ -860,7 +1051,7 @@
                     });
 
                     // Visit toggle buttons
-                    churchesData.forEach(church => {
+                    for (const church of churchesData) {
                         const toggleVisitBtn = document.getElementById(`toggle-visit-btn-${church.id}`);
                         if (toggleVisitBtn) {
                             toggleVisitBtn.addEventListener('click', (e) => {
@@ -878,7 +1069,7 @@
                                 window.open(`https://www.google.com/maps/dir/?api=1&destination=${address}&travelmode=driving`, '_blank');
                             });
                         }
-                    });
+                    }
                 }
             }
         })();
