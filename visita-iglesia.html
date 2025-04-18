@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Stations of the Cross - Visita Iglesia" />
+    <title>Stations of the Cross - Visita Iglesia</title>
+
+    <!-- Inlined CSS from build -->
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+            margin: 0
+        }
+
+        code {
+            font-family: source-code-pro, Menlo, Monaco, Consolas, Courier New, monospace
+        }
+
+        .App {
+            display: flex;
+            flex-direction: column;
+            font-family: Palatino Linotype, Book Antiqua, Palatino, serif;
+            margin: 0 auto;
+            max-width: 1200px;
+            min-height: 100vh;
+            text-align: center
+        }
+
+        .App-header {
+            background-color: #4a2416;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem 0
+        }
+
+        .App-header h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin: 0
+        }
+
+        .stations-container {
+            align-items: center;
+            display: flex;
+            flex: 1 1;
+            flex-direction: column;
+            padding: 0 1rem
+        }
+
+        .station-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px #0000001a;
+            margin-bottom: 2rem;
+            max-width: 800px;
+            padding: 2rem;
+            width: 100%
+        }
+
+        .station-card h2 {
+            color: #4a2416;
+            font-size: 1.8rem;
+            margin-bottom: .5rem
+        }
+
+        .station-card h3 {
+            color: #634832;
+            font-size: 1.5rem;
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            margin-top: 0
+        }
+
+        .station-description {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            text-align: left
+        }
+
+        .prayer-section {
+            background-color: #f9f3e7;
+            border-left: 4px solid #a67c52;
+            border-radius: 6px;
+            padding: 1.5rem;
+            text-align: left
+        }
+
+        .prayer-section h4 {
+            color: #4a2416;
+            font-size: 1.2rem;
+            margin-bottom: .5rem;
+            margin-top: 0
+        }
+
+        .prayer-section p {
+            color: #555;
+            font-style: italic;
+            line-height: 1.6;
+            margin: 0
+        }
+
+        .navigation-controls {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            max-width: 800px;
+            width: 100%
+        }
+
+        .nav-button {
+            background-color: #a67c52;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: .8rem 1.5rem;
+            transition: background-color .3s
+        }
+
+        .nav-button:hover:not(:disabled) {
+            background-color: #845c32
+        }
+
+        .nav-button:disabled {
+            background-color: #d3c0aa;
+            cursor: not-allowed
+        }
+
+        .station-indicator {
+            color: #634832;
+            font-size: 1.1rem;
+            font-weight: 600
+        }
+
+        footer {
+            background-color: #f9f3e7;
+            color: #634832;
+            margin-top: auto;
+            padding: 1.2rem 0
+        }
+
+        .map-toggle-button {
+            background-color: #4a2416;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            margin-top: 1.5rem;
+            padding: .8rem 1.5rem;
+            transition: background-color .3s
+        }
+
+        .map-toggle-button:hover {
+            background-color: #634832
+        }
+
+        .map-container {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px #0000001a;
+            margin-top: 1.5rem;
+            overflow: hidden
+        }
+
+        .map-note {
+            color: #634832;
+            font-size: .9rem;
+            font-style: italic;
+            margin-top: .5rem;
+            text-align: center
+        }
+
+        .main-nav {
+            display: flex;
+            justify-content: center;
+            margin-top: 1rem
+        }
+
+        .nav-tab {
+            background-color: #fff3;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0 .5rem;
+            padding: .8rem 1.5rem;
+            transition: background-color .3s
+        }
+
+        .nav-tab.active {
+            background-color: #a67c52;
+            font-weight: 700
+        }
+
+        .nav-tab:hover:not(.active) {
+            background-color: #ffffff4d
+        }
+
+        .main-content {
+            align-items: center;
+            display: flex;
+            flex: 1 1;
+            flex-direction: column;
+            padding: 0 1rem
+        }
+
+        .churches-container {
+            margin: 0 auto;
+            max-width: 1000px;
+            width: 100%
+        }
+
+        .churches-intro {
+            color: #634832;
+            margin-bottom: 2rem
+        }
+
+        .visit-progress {
+            background-color: #f9f3e7;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0000001a;
+            margin-bottom: 2rem;
+            padding: 1.5rem
+        }
+
+        .visit-progress h3 {
+            color: #4a2416;
+            margin-bottom: 1rem;
+            margin-top: 0
+        }
+
+        .progress-bar-container {
+            background-color: #e9e0d1;
+            border-radius: 10px;
+            height: 20px;
+            margin-bottom: .5rem;
+            overflow: hidden;
+            width: 100%
+        }
+
+        .progress-bar {
+            background-color: #4a2416;
+            border-radius: 10px;
+            height: 100%;
+            transition: width .5s ease-in-out
+        }
+
+        .completion-message {
+            background-color: #fff;
+            border: 1px solid #a67c52;
+            border-radius: 8px;
+            margin-top: 1rem;
+            padding: 1rem
+        }
+
+        .completion-icon {
+            display: block;
+            font-size: 2rem;
+            margin-bottom: .5rem
+        }
+
+        .church-selection {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-bottom: 2rem
+        }
+
+        .church-card {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px #0000001a;
+            cursor: pointer;
+            height: 200px;
+            overflow: hidden;
+            position: relative;
+            transition: transform .3s, box-shadow .3s;
+            width: 230px
+        }
+
+        .church-card:hover {
+            box-shadow: 0 5px 15px #0003;
+            transform: translateY(-5px)
+        }
+
+        .church-image-container {
+            height: 130px;
+            overflow: hidden;
+            position: relative;
+            width: 100%
+        }
+
+        .church-image {
+            height: 100%;
+            transition: transform .3s;
+            width: 100%
+        }
+
+        .church-card:hover .church-image {
+            transform: scale(1.05)
+        }
+
+        .church-image-placeholder {
+            display: none
+        }
+
+        .church-card-visited {
+            align-items: center;
+            background-color: #4caf50;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px #0003;
+            color: #fff;
+            display: flex;
+            font-size: 1rem;
+            height: 30px;
+            justify-content: center;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            width: 30px
+        }
+
+        .church-info {
+            padding: 1rem
+        }
+
+        .church-name {
+            color: #4a2416;
+            font-size: 1.2rem;
+            margin: 0 0 .5rem
+        }
+
+        .church-address {
+            color: #666;
+            font-size: .9rem;
+            line-height: 1.3;
+            margin-bottom: 0
+        }
+
+        .church-profile {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px #0000001a;
+            margin-bottom: 2rem;
+            overflow: hidden;
+            width: 100%
+        }
+
+        .church-profile-content {
+            padding: 2rem
+        }
+
+        .church-profile-header {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem
+        }
+
+        .church-profile-header h2 {
+            color: #4a2416;
+            margin: 0
+        }
+
+        .visit-button {
+            background-color: #a67c52;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: .8rem 1.5rem;
+            transition: background-color .3s
+        }
+
+        .visit-button:hover {
+            background-color: #845c32
+        }
+
+        .visit-button.visited {
+            background-color: #4caf50
+        }
+
+        .church-details {
+            background-color: #f9f3e7;
+            border-left: 4px solid #a67c52;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            padding: 1.5rem
+        }
+
+        .directions-button {
+            background-color: #4a2416;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: .8rem 1.5rem;
+            transition: background-color .3s
+        }
+
+        .directions-button:hover {
+            background-color: #634832
+        }
+    </style>
+</head>
+
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+
+    <!-- Inlined JavaScript for the application -->
+    <script>
+        // Self-executing function to create Visita Iglesia app
+        (function () {
+            // Data for the 14 Stations of the Cross
+            const stationsData = [
+                {
+                    id: 1,
+                    title: "First Station",
+                    subtitle: "Jesus is condemned to death",
+                    description: "After being betrayed by Judas and arrested in the Garden of Gethsemane, Jesus was brought before Pontius Pilate, the Roman governor of Judea. Though Pilate found no reason to condemn Jesus, he gave in to the pressure of the crowd who shouted, 'Crucify him!' Jesus stands before Pilate, crowned with thorns, his body already bruised from beatings. Despite knowing his innocence, Pilate washes his hands of responsibility and delivers Jesus to death by crucifixion—a punishment reserved for the worst criminals. In this moment, Jesus accepts this unjust condemnation with dignity, beginning his final journey of sacrifice. This station reminds us of how often the innocent suffer while the guilty go free, and how systems of justice can be manipulated by fear and politics.",
+                    prayer: "Lord Jesus, help us to be ever mindful of the sacrifice you made for us. When we face unjust treatment, give us the strength to respond with dignity as you did. May we never forget the cost of our salvation and may we stand for justice in all circumstances. Amen."
+                },
+                {
+                    id: 2,
+                    title: "Second Station",
+                    subtitle: "Jesus carries His cross",
+                    description: "The rough wooden cross, weighing between 75 and 125 pounds, is placed upon Jesus' already wounded shoulders. The horizontal beam (patibulum) cuts into his flesh as he begins the journey of about 600 meters through the narrow streets of Jerusalem toward Golgotha, 'the place of the skull.' Each step is agony as the weight presses down upon his lacerated back. Roman soldiers clear the path and jeer at him. This instrument of torture and death becomes a symbol of our own burdens—sickness, pain, heartbreak, and sin. Jesus carries not just the physical weight of the wooden cross but the spiritual weight of all humanity's transgressions. As he struggles forward, his blood marks the path, foreshadowing the ultimate sacrifice he will make for the redemption of mankind.",
+                    prayer: "Lord Jesus, help us to carry our crosses with dignity and grace, following in your footsteps. When our burdens seem too heavy to bear, remind us that you understand our suffering and walk alongside us. Give us strength to persevere through difficult times and to help others carry their burdens. Amen."
+                },
+                {
+                    id: 3,
+                    title: "Third Station",
+                    subtitle: "Jesus falls for the first time",
+                    description: "The combination of sleepless night, brutal scourging, loss of blood, and the crushing weight of the cross proves too much for Jesus' exhausted body. He stumbles on the rough stone pavement and falls to the ground, the heavy cross crashing down upon him. The soldiers respond with mockery and whips, forcing him back to his feet. This first fall represents the physical limitations of Jesus' humanity—God made flesh who experiences our weakness and pain. Despite his divine nature, he chose to endure the full spectrum of human suffering. The fall also symbolizes how sin brings all of us down, yet through Christ, we have the hope of rising again. Jesus' determination to continue despite his weakness gives us courage to persevere through our own failures and struggles.",
+                    prayer: "Lord Jesus, when we fall, help us to remember that you too fell, and with your strength, we can rise again. In our moments of weakness and failure, be our support and our hope. Teach us that falling is not the end but an opportunity to rely more fully on your grace. Grant us humility to accept our limitations and courage to begin again. Amen."
+                },
+                {
+                    id: 4,
+                    title: "Fourth Station",
+                    subtitle: "Jesus meets His mother",
+                    description: "In the midst of his suffering, Jesus encounters his mother Mary along the Via Dolorosa. Their eyes meet in a moment of profound connection and shared anguish. Mary, who had cradled him as a baby and watched him grow, now witnesses her son's journey to execution. Her heart is pierced with sorrow, fulfilling Simeon's prophecy from decades earlier: 'And a sword will pierce your own soul too' (Luke 2:35). Yet Mary remains steadfast in her faith and presence. This meeting captures the depth of a mother's love that remains strong even in the darkest moments. It also reveals Jesus' continued concern for others despite his own agony. In this brief exchange between mother and son, we see the cost of discipleship and the power of compassionate presence during suffering. Their wordless communication speaks volumes about acceptance, surrender, and unbreakable bonds of love.",
+                    prayer: "Lord Jesus, may we be blessed with the love and courage of your mother. Help us to stand faithfully with those who suffer, offering the gift of presence even when words fail. Grant us Mary's steadfast faith when our hearts are breaking. Strengthen all mothers who watch their children suffer, and comfort those separated from loved ones in times of trial. Amen."
+                },
+                {
+                    id: 5,
+                    title: "Fifth Station",
+                    subtitle: "Simon of Cyrene helps Jesus carry His cross",
+                    description: "As Jesus struggles under the weight of the cross, the Roman soldiers force a passerby, Simon of Cyrene, to help carry it. Simon, a foreigner from North Africa who had come to Jerusalem for Passover, finds himself suddenly thrust into the center of this cosmic drama. Initially reluctant, carrying the cross by compulsion rather than compassion, Simon becomes a participant in Christ's suffering. This act of forced service transforms into a profound privilege—to literally share the burden of the Savior. Scripture later mentions Simon's sons Alexander and Rufus (Mark 15:21), suggesting his family became part of the early Christian community. This station reminds us that sometimes we are called to help others unexpectedly, and that such service—even when initially unwelcome—can become a blessing. It shows how Jesus accepted human assistance in his divine mission, highlighting both his vulnerability and his solidarity with all who need help.",
+                    prayer: "Lord Jesus, help us to be willing to assist others in their time of need, even when inconvenient or unplanned. Open our eyes to recognize opportunities to lighten others' burdens. When we are called to be Simons in the lives of others, give us generous hearts. And when we struggle under our own crosses, help us to accept assistance with humility and gratitude. Amen."
+                },
+                {
+                    id: 6,
+                    title: "Sixth Station",
+                    subtitle: "Veronica wipes the face of Jesus",
+                    description: "Though not mentioned in Scripture, tradition holds that a compassionate woman named Veronica stepped from the crowd to offer comfort to Jesus. Seeing his face covered with sweat, blood, and dirt, she bravely breaks through the guards and gently presses her veil to his face to wipe it clean. According to legend, the image of Christ's face was miraculously imprinted on her cloth. The name 'Veronica' itself suggests this miracle, derived from 'vera' (true) and 'icon' (image). This act of mercy provides a stark contrast to the cruelty surrounding Jesus. It represents all small acts of kindness that bring relief in seemingly hopeless situations. Veronica couldn't stop the crucifixion, but she could offer a moment of dignity and comfort. Her courage reminds us that we are called to see Christ's face in all who suffer and to respond with compassionate action rather than passive observation. In a world of spectators, she chose to be a participant in alleviating suffering.",
+                    prayer: "Lord Jesus, may we always have the courage to show compassion to those who suffer. Give us Veronica's boldness to step out of our comfort zones to bring comfort to others. Help us to recognize your face in the downtrodden and marginalized, and to respond with practical acts of mercy. Make us instruments of your compassion in a world that often turns away from pain. Amen."
+                },
+                {
+                    id: 7,
+                    title: "Seventh Station",
+                    subtitle: "Jesus falls for the second time",
+                    description: "Despite Simon's help, the journey continues to drain Jesus' limited physical resources. The road steepens as they begin to ascend toward Golgotha, and Jesus falls a second time. This fall is even more painful than the first, as his weakened body crashes against the hard stone street. The soldiers show no patience, yanking him up and forcing him forward. This second fall reveals the extent of Jesus' physical exhaustion and suffering. It symbolizes how our own repeated failings—the persistent sins and weaknesses that plague us—were all known and borne by Christ. Yet it also demonstrates his unwavering commitment to complete the mission of salvation. Each time Jesus falls and rises again, he teaches us about perseverance through repeated failures. This station reminds us that the path of discipleship is not about never falling, but about always getting up again, however difficult that may be. His determination to continue despite overwhelming pain shows the immeasurable depth of divine love.",
+                    prayer: "Lord Jesus, in our weakness, be our strength. Help us to persevere through our trials, especially when we fall repeatedly into the same patterns of sin and failure. When we are tempted to stay down in defeat, inspire us with your example of rising yet again to continue the journey. Grant us persistence in doing good, and the humility to begin again after each failure. Strengthen all who struggle with chronic illness, addiction, or recurring hardship. Amen."
+                },
+                {
+                    id: 8,
+                    title: "Eighth Station",
+                    subtitle: "Jesus meets the women of Jerusalem",
+                    description: "As Jesus continues his painful journey, he encounters a group of women from Jerusalem who are mourning and lamenting his suffering. Despite his own agony, Jesus turns his attention to them, saying, 'Daughters of Jerusalem, do not weep for me; weep for yourselves and for your children' (Luke 23:28). He prophesies the coming destruction of Jerusalem and warns of difficult days ahead. This remarkable moment shows Jesus' selfless concern for others even in his darkest hour. While he accepts his own suffering as part of God's plan, he demonstrates compassion for the future trials these women and their families will face. The women represent all who mourn tragedy but may not understand its deeper meaning. Jesus redirects their compassion toward a proper understanding of sin's consequences and coming judgment. This station teaches us about proper perspective in suffering, showing how Jesus remained focused on the spiritual welfare of others rather than seeking sympathy for himself.",
+                    prayer: "Lord Jesus, may we always be mindful of those who weep and suffer in our world. Give us wisdom to discern the true sources of suffering and the courage to confront them. When we are moved by compassion, direct our emotions toward meaningful action. Help us to place our own trials in proper perspective, and like you, to remain concerned for others even in our difficult moments. Comfort all who mourn, and open their hearts to your eternal wisdom. Amen."
+                },
+                {
+                    id: 9,
+                    title: "Ninth Station",
+                    subtitle: "Jesus falls for the third time",
+                    description: "As Jesus approaches the hill of Calvary, his strength is almost completely gone. The weight of the cross, combined with dehydration, blood loss, and the trauma of beatings, causes him to collapse a third time. This fall is the most devastating yet, as Jesus' body is pushed to the absolute limits of human endurance. They have reached the foot of Calvary, and the end is near, yet this final fall demonstrates how completely Jesus emptied himself for our salvation. The number three in Scripture often represents completeness, and this third fall shows the complete exhaustion of Jesus' physical resources. It parallels Peter's three denials and will be answered by Jesus' three-fold question to Peter after the resurrection: 'Do you love me?' This station represents those moments in life when we reach our breaking point, when we feel we cannot take one more step. Jesus experienced this depth of human frailty, sanctifying even our moments of complete collapse and failure.",
+                    prayer: "Lord Jesus, when we have no strength left, help us to remember that you are always with us. In those moments when we fall for what feels like the final time, when we cannot imagine rising again, be our hope and our strength. We unite our complete exhaustion with yours, trusting that no depth of human weakness is beyond your redemptive power. Support all who have reached their breaking point—the severely depressed, the chronically ill, the utterly discouraged—and show them that new life is still possible. Amen."
+                },
+                {
+                    id: 10,
+                    title: "Tenth Station",
+                    subtitle: "Jesus is stripped of His garments",
+                    description: "Having arrived at Golgotha, Jesus faces a final humiliation before crucifixion. The soldiers strip him of his garments, which have by now become stuck to his wounds, reopening them as the cloth is torn away. The seamless garment, likely woven by his mother, is taken from him and divided among the soldiers, who cast lots for it, fulfilling the prophecy from Psalm 22:18. Jesus, who created the universe and clothed it in splendor, now stands naked and exposed to the mockery of the crowd. This radical vulnerability reveals the extent of Christ's identification with human shame and humiliation. It calls to mind Adam and Eve's nakedness and shame in Eden, now redeemed by the Second Adam who endures disgrace to restore our dignity. The stripping also symbolizes how Jesus surrendered everything—possessions, dignity, physical comfort—holding nothing back in his sacrifice. This station reminds us of the inherent dignity of the human body, even when subjected to degradation, and calls us to respect and protect the dignity of all people, especially the vulnerable.",
+                    prayer: "Lord Jesus, help us to see your face in the vulnerable and defenseless. When we experience shame, rejection, or the loss of dignity, unite our suffering to yours. Give us courage when we feel exposed and vulnerable. Help us to stand against all forms of human degradation and exploitation. Teach us to value people's dignity above material possessions, and to create a culture that protects the vulnerable rather than exploiting them. Clothe us in your grace and restore the dignity that sin and suffering have taken from us. Amen."
+                },
+                {
+                    id: 11,
+                    title: "Eleventh Station",
+                    subtitle: "Jesus is nailed to the cross",
+                    description: "The soldiers lay Jesus down on the wooden cross that he has carried. They stretch out his arms along the crossbeam and drive thick iron nails through his wrists into the wood. Then they nail his feet to the vertical beam. The violent hammer blows echo across Golgotha as metal tears through flesh and scrapes against bone. Every nerve in Jesus' hands and feet screams with pain. The soldiers raise the cross and drop it into a prepared hole in the ground, sending shockwaves of agony through Jesus' body. Suspended between heaven and earth, Jesus begins the final phase of his sacrifice. Despite this torture, Jesus speaks words of forgiveness: 'Father, forgive them, for they know not what they do' (Luke 23:34). The hands that healed the sick and blessed the children are now pinned to the wood. The feet that walked the roads of Galilee bringing good news are immobilized. This station confronts us with the immense physical suffering of crucifixion and the spiritual mystery of God himself experiencing human torture.",
+                    prayer: "Lord Jesus, by your wounds we are healed. Help us to accept our own crosses with grace. When we are hurt by others, give us the strength to forgive as you forgave. We bring before you all victims of violence and torture in our world. May your nailed hands and feet remind us of the preciousness of each human life and the tremendous cost of our redemption. Give us courage to stand against all forms of cruelty and injustice. Amen."
+                },
+                {
+                    id: 12,
+                    title: "Twelfth Station",
+                    subtitle: "Jesus dies on the cross",
+                    description: "After three hours on the cross, the moment of redemption arrives. Jesus has spoken six times from the cross—forgiving his enemies, promising paradise to the repentant thief, providing for his mother, expressing abandonment in the words of Psalm 22, declaring his thirst, and announcing that 'it is finished.' Now, at about three in the afternoon, Jesus cries out with a loud voice, 'Father, into your hands I commend my spirit' (Luke 23:46). Having said this, he bows his head and gives up his spirit. At this moment, the Gospel of Matthew tells us that the curtain of the temple was torn in two from top to bottom. The earth shook, rocks split, and tombs broke open. The centurion guarding Jesus exclaims, 'Truly this was the Son of God!' (Matthew 27:54). In this supreme moment, Jesus completes the sacrifice that bridges the gap between humanity and God. The long history of sin and death meets its match in this act of perfect love. From the cross, Christ creates a new beginning for humanity—a new covenant sealed in his blood. The apparent defeat becomes history's greatest victory.",
+                    prayer: "Lord Jesus, may we never forget the magnitude of your love for us. In your final surrender, you showed us the meaning of perfect obedience and perfect love. Help us to die to sin and selfishness in our daily lives. When we face our own death, give us the grace to surrender our lives into the Father's hands with trust. We pray for all who are dying today, that they might know your presence in their final moments. May your death give meaning and redemptive value to all human suffering and death. Amen."
+                },
+                {
+                    id: 13,
+                    title: "Thirteenth Station",
+                    subtitle: "Jesus is taken down from the cross",
+                    description: "As evening approaches, Joseph of Arimathea, a secret disciple of Jesus and member of the Sanhedrin, courageously asks Pilate for Jesus' body. Along with Nicodemus, who brings a mixture of myrrh and aloes, they carefully remove the nails and lower Jesus' body from the cross. Mary receives her son's broken body into her arms, fulfilling Simeon's prophecy that a sword would pierce her heart. The women who remained faithful at the cross now prepare to anoint Jesus' body according to Jewish burial customs. This tender moment of care contrasts sharply with the violence that preceded it. Those who loved Jesus provide dignity in death that was denied him in his final hours. Mary's grief as she cradles her son's lifeless body—a scene immortalized in Michelangelo's Pietà—represents the sorrow of all parents who have lost children to violence and tragedy. This station reminds us of the importance of properly honoring the dead and comforting the bereaved. It also shows how even in apparent defeat, God was still at work, preparing for the miracle of resurrection.",
+                    prayer: "Lord Jesus, comfort those who mourn and bring them the hope that comes from faith in your resurrection. We remember all who have lost loved ones, especially parents grieving their children. Give courage to those who care for the dead and dying. Help us to show reverence for the human body, even in death, knowing that it is destined for resurrection. May we, like Joseph and Nicodemus, be willing to publicly honor you when it seems that all hope is lost. Strengthen those who work in hospice care, funeral services, and bereavement ministry. Amen."
+                },
+                {
+                    id: 14,
+                    title: "Fourteenth Station",
+                    subtitle: "Jesus is laid in the tomb",
+                    description: "Joseph of Arimathea provides his own newly hewn tomb for Jesus' burial. With reverence, they wrap Jesus' body in clean linen cloths along with the spices Nicodemus has brought. They place him in the tomb, roll a great stone across the entrance, and depart as the Sabbath approaches. The tomb represents the apparent finality of death—the ultimate enemy that claims every human life. The stone sealing the tomb seems to represent the definitive end of Jesus' ministry and the disciples' hopes. The women note the tomb's location so they can return after the Sabbath to complete the burial preparations. Little do they know that this tomb will soon become the site of history's greatest miracle. What appears to be a conclusion is actually a prelude. The seed must be buried before new life can emerge. Jesus' body rests in the earth, fulfilling the Sabbath rest and preparing for the new creation that will begin with Sunday's dawn. The sealed tomb reminds us that God often works most powerfully in darkness and hiddenness, preparing resurrections we cannot yet imagine.",
+                    prayer: "Lord Jesus, help us to trust in your promise of eternal life. May we live in the hope of the resurrection. When we face situations that seem final and hopeless, strengthen our faith in your power to bring new life. We entrust to you all who have died, confident that the grave is not the end of their story or ours. In times of waiting and uncertainty, help us to remain faithful like the women who observed where you were laid and returned in loving service. Transform the tombs of our lives—our disappointments, failures, and griefs—into gateways to new life. Amen."
+                }
+            ];
+
+            // Church data for Visita Iglesia
+            const churchesData = [
+                {
+                    id: 1,
+                    name: "St Mark's Catholic Mission Church",
+                    address: "Pakuranga Road, Pakuranga Heights, Auckland",
+                    description: "A beautiful mission church serving the Catholic community in East Auckland.",
+                    imageUrl: "https://images.unsplash.com/photo-1503031897894-f546922273f9?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "7:00 AM - 7:00 PM daily",
+                    coordinates: { lat: -36.9015124, lng: 174.8970172 }
+                },
+                {
+                    id: 2,
+                    name: "Our Lady Star of the Sea",
+                    address: "Howick, Auckland",
+                    description: "A parish church overlooking the Hauraki Gulf known for its beautiful stained glass.",
+                    imageUrl: "https://images.unsplash.com/photo-1545975420-a2f4cb71964d?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "6:30 AM - 8:00 PM daily",
+                    coordinates: { lat: -36.8931307, lng: 174.9308247 }
+                },
+                {
+                    id: 3,
+                    name: "St Luke's Catholic Church",
+                    address: "Flat Bush, Auckland",
+                    description: "A vibrant parish serving the growing community in South Auckland.",
+                    imageUrl: "https://images.unsplash.com/photo-1588927330053-5ab89e324c09?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "7:00 AM - 8:00 PM daily",
+                    coordinates: { lat: -36.9607972, lng: 174.9069463 }
+                },
+                {
+                    id: 4,
+                    name: "Catholic Church of the Assumption",
+                    address: "Onehunga, Auckland",
+                    description: "A historic church with a strong tradition of Lenten devotions.",
+                    imageUrl: "https://images.unsplash.com/photo-1475091360677-39a341447f49?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "6:00 AM - 7:30 PM daily",
+                    coordinates: { lat: -36.9225013, lng: 174.7881539 }
+                },
+                {
+                    id: 5,
+                    name: "St Patrick's Cathedral",
+                    address: "Auckland CBD",
+                    description: "The mother church of the Catholic Diocese of Auckland with beautiful architecture.",
+                    imageUrl: "https://images.unsplash.com/photo-1528908929486-dfaa209c6986?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "6:30 AM - 9:00 PM daily",
+                    coordinates: { lat: -36.8504963, lng: 174.7651967 }
+                },
+                {
+                    id: 6,
+                    name: "St Benedict's Catholic Church",
+                    address: "Newton, Auckland",
+                    description: "A historic church known for its traditional liturgies and devotions.",
+                    imageUrl: "https://images.unsplash.com/photo-1599837487527-e43c4e9bc8ad?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "7:00 AM - 7:00 PM daily",
+                    coordinates: { lat: -36.8586121, lng: 174.7594232 }
+                },
+                {
+                    id: 7,
+                    name: "St Joseph's Catholic Church",
+                    address: "Grey Lynn, Auckland",
+                    description: "A welcoming parish with a focus on community outreach and spiritual formation.",
+                    imageUrl: "https://images.unsplash.com/photo-1513783371732-4b8aaa8e62d0?auto=format&fit=crop&w=800&q=80",
+                    availableStations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+                    openingHours: "7:00 AM - 8:00 PM daily",
+                    coordinates: { lat: -36.8613872, lng: 174.7343853 }
+                }
+            ];
+
+            // Initialize the application
+            document.addEventListener('DOMContentLoaded', function () {
+                const app = new VisitaIglesiaApp();
+                app.initialize();
+            });
+
+            class VisitaIglesiaApp {
+                constructor() {
+                    this.currentStationIndex = 0;
+                    this.visitedChurches = [];
+                    this.selectedChurch = null;
+                    this.activeTab = 'stations'; // 'stations', 'churches'
+                }
+
+                initialize() {
+                    this.loadVisitedChurches();
+                    this.renderApp();
+                    this.setupEventListeners();
+                }
+
+                loadVisitedChurches() {
+                    const saved = localStorage.getItem('visitedChurches');
+                    if (saved) {
+                        this.visitedChurches = JSON.parse(saved);
+                    }
+                }
+
+                saveVisitedChurches() {
+                    localStorage.setItem('visitedChurches', JSON.stringify(this.visitedChurches));
+                }
+
+                markChurchAsVisited(churchId) {
+                    if (!this.visitedChurches.includes(churchId)) {
+                        this.visitedChurches.push(churchId);
+                    } else {
+                        this.visitedChurches = this.visitedChurches.filter(id => id !== churchId);
+                    }
+                    this.saveVisitedChurches();
+                    this.renderApp();
+                }
+
+                goToPreviousStation() {
+                    if (this.currentStationIndex > 0) {
+                        this.currentStationIndex--;
+                        this.renderApp();
+                    }
+                }
+
+                goToNextStation() {
+                    if (this.currentStationIndex < stationsData.length - 1) {
+                        this.currentStationIndex++;
+                        this.renderApp();
+                    }
+                }
+
+                setActiveTab(tab) {
+                    this.activeTab = tab;
+                    this.renderApp();
+                }
+
+                selectChurch(church) {
+                    this.selectedChurch = church;
+                    this.renderApp();
+                }
+
+                renderApp() {
+                    const rootElement = document.getElementById('root');
+                    rootElement.innerHTML = `
+        <div class="App">
+          <header class="App-header">
+            <h1>Visita Iglesia</h1>
+            <nav class="main-nav">
+              <button 
+                class="nav-tab ${this.activeTab === 'stations' ? 'active' : ''}"
+                id="stations-tab"
+              >
+                Stations of the Cross
+              </button>
+              <button 
+                class="nav-tab ${this.activeTab === 'churches' ? 'active' : ''}"
+                id="churches-tab"
+              >
+                Churches
+              </button>
+            </nav>
+          </header>
+          <main class="main-content">
+            ${this.activeTab === 'stations' ? this.renderStationsTab() : this.renderChurchesTab()}
+          </main>
+          <footer>
+            <p>© ${new Date().getFullYear()} Visita Iglesia | Stations of the Cross</p>
+          </footer>
+        </div>
+      `;
+                    this.setupEventListeners();
+                }
+
+                renderStationsTab() {
+                    const currentStation = stationsData[this.currentStationIndex];
+                    return `
+        <div class="stations-container">
+          <div class="station-card">
+            <h2>${currentStation.title}</h2>
+            <h3>${currentStation.subtitle}</h3>
+            <p class="station-description">${currentStation.description}</p>
+            <div class="prayer-section">
+              <h4>Prayer</h4>
+              <p>${currentStation.prayer}</p>
+            </div>
+          </div>
+          <div class="navigation-controls">
+            <button
+              id="prev-station-btn"
+              ${this.currentStationIndex === 0 ? 'disabled' : ''}
+              class="nav-button"
+            >
+              Previous Station
+            </button>
+            <span class="station-indicator">
+              Station ${currentStation.id} of ${stationsData.length}
+            </span>
+            <button
+              id="next-station-btn"
+              ${this.currentStationIndex === stationsData.length - 1 ? 'disabled' : ''}
+              class="nav-button"
+            >
+              Next Station
+            </button>
+          </div>
+        </div>
+      `;
+                }
+
+                renderChurchesTab() {
+                    return `
+        <div class="churches-container">
+          <h2>Auckland Catholic Churches</h2>
+          <p class="churches-intro">Visit seven churches and pray the Stations of the Cross for Visita Iglesia</p>
+          
+          <div class="visit-progress">
+            <h3>Your Visita Iglesia Progress</h3>
+            <div class="progress-bar-container">
+              <div 
+                class="progress-bar" 
+                style="width: ${Math.min((this.visitedChurches.length / 7) * 100, 100)}%"
+              ></div>
+            </div>
+            <p>${this.visitedChurches.length} of 7 churches visited</p>
+            ${this.visitedChurches.length === 7 ? `
+              <div class="completion-message">
+                <span class="completion-icon">✝️</span>
+                <p>Congratulations! You have completed your Visita Iglesia journey.</p>
+              </div>
+            ` : ''}
+          </div>
+          
+          <div class="church-selection">
+            ${churchesData.map(church => this.renderChurchCard(church)).join('')}
+          </div>
+          
+          ${this.selectedChurch ? this.renderChurchProfile(this.selectedChurch) : ''}
+        </div>
+      `;
+                }
+
+                renderChurchCard(church) {
+                    const isVisited = this.visitedChurches.includes(church.id);
+                    return `
+        <div class="church-card" data-church-id="${church.id}">
+          <div class="church-image-container">
+            <div
+              class="church-image"
+              style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center;"
+            >
+              ${isVisited ? '<div class="church-card-visited">✓</div>' : ''}
+            </div>
+          </div>
+          <div class="church-info">
+            <h3 class="church-name">${church.name}</h3>
+            <p class="church-address">${church.address}</p>
+          </div>
+        </div>
+      `;
+                }
+
+                renderChurchProfile(church) {
+                    const isVisited = this.visitedChurches.includes(church.id);
+                    return `
+        <div class="church-profile">
+          <div 
+            style="background-image: url(${church.imageUrl}); background-size: cover; background-position: center; height: 250px; border-radius: 8px 8px 0 0;"
+          ></div>
+          <div class="church-profile-content">
+            <div class="church-profile-header">
+              <h2>${church.name}</h2>
+              <button
+                class="visit-button ${isVisited ? 'visited' : ''}"
+                data-church-id="${church.id}"
+                id="toggle-visit-btn-${church.id}"
+              >
+                ${isVisited ? 'Visited ✓' : 'Mark as Visited'}
+              </button>
+            </div>
+            <p class="church-address">${church.address}</p>
+            <p class="church-description">${church.description}</p>
+            <div class="church-details">
+              <p><strong>Opening Hours:</strong> ${church.openingHours}</p>
+              <p><strong>Stations Available:</strong> All 14 Stations</p>
+            </div>
+            <button
+              class="directions-button"
+              data-church-address="${church.address}"
+              id="directions-btn-${church.id}"
+            >
+              Get Directions
+            </button>
+          </div>
+        </div>
+      `;
+                }
+
+                setupEventListeners() {
+                    // Tab navigation
+                    const stationsTab = document.getElementById('stations-tab');
+                    const churchesTab = document.getElementById('churches-tab');
+
+                    if (stationsTab) {
+                        stationsTab.addEventListener('click', () => this.setActiveTab('stations'));
+                    }
+
+                    if (churchesTab) {
+                        churchesTab.addEventListener('click', () => this.setActiveTab('churches'));
+                    }
+
+                    // Station navigation
+                    const prevStationBtn = document.getElementById('prev-station-btn');
+                    const nextStationBtn = document.getElementById('next-station-btn');
+
+                    if (prevStationBtn) {
+                        prevStationBtn.addEventListener('click', () => this.goToPreviousStation());
+                    }
+
+                    if (nextStationBtn) {
+                        nextStationBtn.addEventListener('click', () => this.goToNextStation());
+                    }
+
+                    // Church selection
+                    const churchCards = document.querySelectorAll('.church-card');
+                    churchCards.forEach(card => {
+                        card.addEventListener('click', (e) => {
+                            const churchId = parseInt(card.dataset.churchId);
+                            const church = churchesData.find(c => c.id === churchId);
+                            if (church) {
+                                this.selectChurch(church);
+                            }
+                        });
+                    });
+
+                    // Visit toggle buttons
+                    churchesData.forEach(church => {
+                        const toggleVisitBtn = document.getElementById(`toggle-visit-btn-${church.id}`);
+                        if (toggleVisitBtn) {
+                            toggleVisitBtn.addEventListener('click', (e) => {
+                                e.stopPropagation(); // Prevent church selection
+                                this.markChurchAsVisited(church.id);
+                            });
+                        }
+
+                        // Directions button
+                        const directionsBtn = document.getElementById(`directions-btn-${church.id}`);
+                        if (directionsBtn) {
+                            directionsBtn.addEventListener('click', (e) => {
+                                e.stopPropagation(); // Prevent church selection
+                                const address = encodeURIComponent(directionsBtn.dataset.churchAddress);
+                                window.open(`https://www.google.com/maps/dir/?api=1&destination=${address}&travelmode=driving`, '_blank');
+                            });
+                        }
+                    });
+                }
+            }
+        })();
+    </script>
+</body>
+
+</html>
