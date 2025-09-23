@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>When I Say Your Name — Chords</title>
+    <style>
+      :root {
+        --bg: #0f0f12;
+        --fg: #e9e9ef;
+        --muted: #9aa0a6;
+        --accent: #6aa0ff;
+        --rule: #2a2d34;
+        --font-size: 16px;
+        --line-height: 1.4;
+        --column-gap: 2rem;
+        --content-max: 1200px;
+      }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+        font-size: var(--font-size);
+        line-height: var(--line-height);
+      }
+
+      .page {
+        margin: 0 auto;
+        padding: 6rem 1rem 2rem;
+        max-width: var(--content-max);
+      }
+
+      header.toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .75rem 1rem;
+        background: linear-gradient(180deg, rgba(15,15,18,.95) 0%, rgba(15,15,18,.88) 60%, rgba(15,15,18,0) 100%);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .title {
+        display: flex;
+        align-items: baseline;
+        gap: .75rem;
+        font-weight: 600;
+      }
+      .title small { color: var(--muted); font-weight: 500; }
+
+      .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+      .controls label { color: var(--muted); margin-right: .25rem; }
+      .controls button {
+        appearance: none;
+        border: 1px solid var(--rule);
+        background: #15161a;
+        color: var(--fg);
+        padding: .4rem .7rem;
+        border-radius: .5rem;
+        cursor: pointer;
+        font: inherit;
+      }
+      .controls button[aria-pressed="true"] {
+        border-color: var(--accent);
+        color: white;
+        background: color-mix(in oklab, var(--accent) 18%, #15161a);
+      }
+
+      .song {
+        /* Multi-column container; JS toggles the --cols custom property */
+        --cols: 1;
+        column-count: var(--cols);
+        column-gap: var(--column-gap);
+        column-rule: 1px solid var(--rule);
+      }
+
+      .song pre {
+        /* Keep chord alignment */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.98rem;
+        line-height: 1.4;
+        white-space: pre; /* preserve spacing and avoid reflowing chords */
+        margin: 0;
+        padding: 1rem 0;
+        break-inside: avoid; /* avoid breaking a pre block across columns */
+        overflow-x: auto;
+      }
+
+      .legend { color: var(--muted); font-size: .9rem; }
+      .hint { color: var(--muted); font-size: .85rem; }
+
+      @media (max-width: 720px) {
+        .song { --cols: 1 !important; }
+        .controls .desktop-only { display: none; }
+      }
+
+      @media print {
+        body { background: white; color: black; }
+        header.toolbar { display: none; }
+        .page { padding: 0; }
+        .song { --cols: 2; column-gap: 1.5rem; }
+        .song pre { font-size: 11pt; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="toolbar" role="group" aria-label="Chord sheet controls">
+      <div class="title">
+        <div>When I Say Your Name</div>
+        <small>Chord Sheet</small>
+      </div>
+      <div class="controls">
+        <label for="col1">Columns:</label>
+        <button id="col1" data-cols="1" aria-pressed="true" title="1 column (shortcut: 1)">1</button>
+        <button id="col2" data-cols="2" aria-pressed="false" title="2 columns (shortcut: 2)">2</button>
+        <button id="col3" data-cols="3" aria-pressed="false" title="3 columns (shortcut: 3)">3</button>
+        <span class="hint desktop-only">Press 1/2/3 to change columns</span>
+      </div>
+    </header>
+
+    <main class="page">
+      <section id="sheet" class="song" style="--cols: 1">
+        <pre>INTRO:
+Em C G
+Em C G
+Em C G
+Em C G</pre>
+
+        <pre>VERSE1:
+G          C                       G
+ MIRACLES, WONDERS, SECRETS I CAN'T CONTAIN
+C                    G 
+ THEY UNFOLD WHEN I SPEAK YOUR NAME
+C                      G         C 
+ I'M IN AWE OF YOUR GREATNESS, O GOD</pre>
+
+        <pre>VERSE2:
+G                  C                              G
+ ALL THE LIES, THE FEARS, AND THE DOUBTS OH THEY MELT AWAY
+C                    G
+ WHEN I CALL ON YOUR NAME, JESUS
+C                 G      C 
+ I'M NO LONGER AFRAID, O GOD</pre>
+
+        <pre>PRE-CHORUS:
+   Am         Em     D    G/B
+IN WORSHIP I WILL RECALL
+     Am               Em     D
+YOUR FAITHFULNESS THROUGH IT ALL</pre>
+
+        <pre>CHORUS:
+       G         
+WHEN I SAY YOUR NAME 
+      D 
+I SEE FAITH ARISING
+       Em 
+WHEN I SAY YOUR NAME 
+     C 
+MY FEARS, THEY COME CRASHING
+       G/B
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE</pre>
+
+        <pre>Em C G
+Em C G</pre>
+
+        <pre>VERSE2:
+G                  C                              G
+ ALL THE LIES, THE FEARS, AND THE DOUBTS OH THEY MELT AWAY
+C                    G
+ WHEN I CALL ON YOUR NAME, JESUS
+C                 G      C 
+ I'M NO LONGER AFRAID, O GOD</pre>
+
+        <pre>PRE-CHORUS:
+   Am         Em     D    G/B
+IN WORSHIP I WILL RECALL
+     Am               Em     D
+YOUR FAITHFULNESS THROUGH IT ALL</pre>
+
+        <pre>CHORUS:
+       G         
+WHEN I SAY YOUR NAME 
+      D 
+I SEE FAITH ARISING
+       Em 
+WHEN I SAY YOUR NAME 
+     C 
+MY FEARS, THEY COME CRASHING
+       G
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE
+
+       G
+WHEN I SAY YOUR NAME 
+    D
+I KNOW THERE IS HEALING
+       Em
+WHEN I SAY YOUR NAME 
+    C 
+I'M NO LONGER LACKING
+       G
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE</pre>
+
+        <pre>G/B C 
+Em C 
+G/B C 
+Em C</pre>
+
+        <pre>BRIDGE:
+          G/B      C 
+LORD, YOU COMFORT
+       Em        D
+YOU RESTORE MY SOUL
+          G/B     C 
+LORD, YOU HIDE ME
+        Em        D
+AND YOU CALL ME YOURS
+
+          G/B      C 
+LORD, YOU COMFORT
+       Em        D
+YOU RESTORE MY SOUL
+          G/B     C 
+LORD, YOU HIDE ME
+        Em        D
+AND YOU CALL ME YOURS
+
+          G/B      C 
+LORD, YOU COMFORT
+       Em        D
+YOU RESTORE MY SOUL
+          G/B     C 
+LORD, YOU HIDE ME
+        Em        D
+AND YOU CALL ME YOURS</pre>
+
+        <pre>CHORUS:
+       G         
+WHEN I SAY YOUR NAME 
+      D 
+I SEE FAITH ARISING
+       Em 
+WHEN I SAY YOUR NAME 
+     C 
+MY FEARS, THEY COME CRASHING
+       G/B
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE
+
+       G
+WHEN I SAY YOUR NAME 
+    D
+I KNOW THERE IS HEALING
+       Em
+WHEN I SAY YOUR NAME 
+    C 
+I'M NO LONGER LACKING
+       G/B
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE</pre>
+
+        <pre>G D Em C 
+G D Em C</pre>
+
+        <pre>CHORUS:
+       G         
+WHEN I SAY YOUR NAME 
+      D 
+I SEE FAITH ARISING
+       Em 
+WHEN I SAY YOUR NAME 
+     C 
+MY FEARS, THEY COME CRASHING
+       G/B
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE
+
+       G/B
+WHEN I SAY YOUR NAME 
+    D
+I KNOW THERE IS HEALING
+       Em
+WHEN I SAY YOUR NAME 
+    C 
+I'M NO LONGER LACKING
+       G/B
+WHEN I SAY YOUR NAME 
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE</pre>
+
+        <pre>   G         
+IN JESUS' NAME
+      D 
+I SEE FAITH ARISING
+   Em 
+IN JESUS' NAME
+     C 
+MY FEARS, THEY COME CRASHING
+   G/B
+IN JESUS' NAME
+       D                      Em   C 
+YOU'RE DRAWING ME IN YOUR EMBRACE
+
+   G/B
+IN JESUS' NAME
+     D
+WE KNOW THERE IS HEALING
+   Em
+IN JESUS' NAME
+      C 
+WE'RE NO LONGER LACKING
+   G/B
+IN JESUS' NAME
+       D                  Em   C 
+WE'RE DRAWN INTO YOUR EMBRACE</pre>
+
+        <pre>   G            D/F#     
+SA NGALAN MO, HESUS MAY PAGHILOM
+   Em           C     
+SA NGALAN MO, HESUS WALANG KULANG
+   G            D/F#           Em C 
+SA NGALAN MO, PANATAG ANG PUSO KO
+
+   G            D/F#     
+SA NGALAN MO, HESUS MAY PAGHILOM
+   Em           C     
+SA NGALAN MO, HESUS WALANG KULANG
+   G           D/F#           Em C 
+SA YAKAP MO, PANATAG ANG PUSO KO</pre>
+      </section>
+
+      <p class="legend">Tip: Use the buttons or press 1/2/3 to switch columns. Print view defaults to 2 columns.</p>
+    </main>
+
+    <script>
+      (function () {
+        const container = document.getElementById('sheet');
+        const buttons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.controls button[data-cols]'));
+
+        function setCols(n) {
+          const cols = Math.max(1, Math.min(3, Number(n) || 1));
+          container.style.setProperty('--cols', String(cols));
+          buttons.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.cols) === cols)));
+          try { localStorage.setItem('when-i-say-your-name.cols', String(cols)); } catch {}
+        }
+
+        // Button events
+        buttons.forEach(btn => btn.addEventListener('click', () => setCols(btn.dataset.cols)));
+
+        // Keyboard shortcuts 1/2/3
+        document.addEventListener('keydown', (e) => {
+          if (['1','2','3'].includes(e.key) && !e.altKey && !e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            setCols(e.key);
+          }
+        });
+
+        // Load saved preference
+        try {
+          const saved = localStorage.getItem('when-i-say-your-name.cols');
+          if (saved) setCols(saved);
+        } catch {}
+      })();
+    </script>
+  </body>
+  </html>
