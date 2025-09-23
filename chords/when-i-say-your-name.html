@@ -121,7 +121,7 @@
         <button id="col1" data-cols="1" aria-pressed="true" title="1 column (shortcut: 1)">1</button>
         <button id="col2" data-cols="3" aria-pressed="false" title="3 columns (shortcut: 3)">3</button>
         <button id="col3" data-cols="5" aria-pressed="false" title="5 columns (shortcut: 5)">5</button>
-        <button id="col3" data-cols="7" aria-pressed="false" title="7 columns (shortcut: 7)">7</button>
+        <button id="col4" data-cols="7" aria-pressed="false" title="7 columns (shortcut: 7)">7</button>
       </div>
     </header>
 
@@ -344,7 +344,7 @@ SA NGALAN MO, HESUS WALANG KULANG
 SA YAKAP MO, PANATAG ANG PUSO KO</pre>
       </section>
 
-      <p class="legend">Tip: Use the buttons or press 1/2/3 to switch columns. Print view defaults to 2 columns.</p>
+       <p class="legend">Tip: Use the buttons or press 1/3/5/7 to switch columns. Print view defaults to 2 columns.</p>
     </main>
 
     <script>
@@ -352,9 +352,12 @@ SA YAKAP MO, PANATAG ANG PUSO KO</pre>
         const container = document.getElementById('sheet');
         const buttons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.controls button[data-cols]'));
 
-        function setCols(n) {
-          const cols = Math.max(1, Math.min(3, Number(n) || 1));
-          container.style.setProperty('--cols', String(cols));
+                            function setCols(n) {
+                                   let cols = Number(n) || 1;
+                                   // Clamp to 1..7 and normalize to odd values (1,3,5,7)
+                                   cols = Math.max(1, Math.min(7, cols));
+                                   if (cols % 2 === 0) cols = cols - 1; // map even to nearest lower odd
+                                   container.style.setProperty('--cols', String(cols));
           buttons.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.cols) === cols)));
           try { localStorage.setItem('when-i-say-your-name.cols', String(cols)); } catch {}
         }
@@ -362,9 +365,9 @@ SA YAKAP MO, PANATAG ANG PUSO KO</pre>
         // Button events
         buttons.forEach(btn => btn.addEventListener('click', () => setCols(btn.dataset.cols)));
 
-        // Keyboard shortcuts 1/2/3
+                            // Keyboard shortcuts 1/3/5/7
         document.addEventListener('keydown', (e) => {
-          if (['1','2','3'].includes(e.key) && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                                   if (['1','3','5','7'].includes(e.key) && !e.altKey && !e.metaKey && !e.ctrlKey) {
             e.preventDefault();
             setCols(e.key);
           }
