@@ -74,11 +74,15 @@
       }
 
       .song {
-        /* Multi-column container; JS toggles the --cols custom property */
+        /* Multi-column container with enforced min width so each column fits full lines */
         --cols: 1;
+        --colWidthPx: 600px; /* measured via JS */
         column-count: var(--cols);
         column-gap: var(--column-gap);
         column-rule: 1px solid var(--rule);
+        /* Ensure each column gets at least --colWidthPx; allow horizontal scroll if needed */
+        min-width: calc(var(--cols) * var(--colWidthPx) + (var(--cols) - 1) * var(--column-gap));
+        overflow-x: auto;
       }
 
       .song pre {
@@ -89,8 +93,8 @@
         white-space: pre; /* preserve spacing and avoid reflowing chords */
         margin: 0;
         padding: 1rem 0;
-        break-inside: avoid; /* avoid breaking a pre block across columns */
-        overflow-x: auto;
+        break-inside: avoid; /* keep a section in one column */
+        overflow: visible; /* avoid per-section scrolling */
       }
 
       .legend { color: var(--muted); font-size: .9rem; }
@@ -105,7 +109,7 @@
         body { background: white; color: black; }
         header.toolbar { display: none; }
         .page { padding: 0; }
-        .song { --cols: 2; column-gap: 1.5rem; }
+        .song { --cols: 2; overflow: visible; min-width: auto; }
         .song pre { font-size: 11pt; }
       }
     </style>
@@ -276,13 +280,46 @@ SA NGALAN MO, HESUS WALANG KULANG
 SA YAKAP MO, PANATAG ANG PUSO KO</pre>
       </section>
 
-       <p class="legend">Tip: Use the buttons or press 1/3/5/7 to switch columns. Print view defaults to 2 columns.</p>
+  <p class="legend">Tip: Use the buttons or press 1/3/5/7 to switch columns. Columns auto-size to fit the widest line; print uses 2 columns.</p>
     </main>
 
     <script>
       (function () {
         const container = document.getElementById('sheet');
         const buttons = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('.controls button[data-cols]'));
+        const sections = /** @type {NodeListOf<HTMLPreElement>} */ (container.querySelectorAll('pre'));
+
+        function measureColumnWidth() {
+          // Measure the longest visual line (px) across all sections
+          const probe = document.createElement('pre');
+          probe.style.position = 'absolute';
+          probe.style.left = '-10000px';
+          probe.style.top = '0';
+          probe.style.visibility = 'hidden';
+          probe.style.whiteSpace = 'pre';
+          // Match font styles used in .song pre
+          probe.style.fontFamily = getComputedStyle(sections[0] || container).fontFamily;
+          probe.style.fontSize = getComputedStyle(sections[0] || container).fontSize;
+          probe.style.lineHeight = getComputedStyle(sections[0] || container).lineHeight;
+          document.body.appendChild(probe);
+
+          let max = 0;
+          sections.forEach(sec => {
+            const lines = sec.textContent.split('\n');
+            for (const line of lines) {
+              probe.textContent = line || ' ';
+              const w = probe.getBoundingClientRect().width;
+              if (w > max) max = w;
+            }
+          });
+
+          // Add some padding (px)
+          max = Math.ceil(max + 24);
+          probe.remove();
+          if (max > 0) {
+            container.style.setProperty('--colWidthPx', max + 'px');
+          }
+        }
 
                             function setCols(n) {
                                    let cols = Number(n) || 1;
@@ -292,6 +329,8 @@ SA YAKAP MO, PANATAG ANG PUSO KO</pre>
                                    container.style.setProperty('--cols', String(cols));
           buttons.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.cols) === cols)));
           try { localStorage.setItem('when-i-say-your-name.cols', String(cols)); } catch {}
+          // After changing columns, ensure width is measured (fonts may have loaded)
+          measureColumnWidth();
         }
 
         // Button events
@@ -305,11 +344,19 @@ SA YAKAP MO, PANATAG ANG PUSO KO</pre>
           }
         });
 
-        // Load saved preference
+        // Load saved preference and measure width
         try {
           const saved = localStorage.getItem('when-i-say-your-name.cols');
           if (saved) setCols(saved);
         } catch {}
+        // Initial measurement (after layout)
+        requestAnimationFrame(measureColumnWidth);
+        // Re-measure on window resize (debounced)
+        let t;
+        window.addEventListener('resize', () => {
+          clearTimeout(t);
+          t = setTimeout(measureColumnWidth, 150);
+        });
       })();
     </script>
   </body>
