@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Missile Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a2e;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    cursor: default;
+  }
+  canvas { display: block; }
+  #ui {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 18px;
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+    text-shadow: 0 0 8px rgba(0,255,255,0.6);
+  }
+  #ui span { margin: 0 18px; }
+  #combo-bar {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(500px, 80vw);
+    height: 22px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 11px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 0 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(255,255,255,0.05);
+  }
+  #combo-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 11px;
+    transition: width 0.2s ease-out, background 0.3s;
+    box-shadow: 0 0 10px rgba(255,200,0,0.4);
+  }
+  #combo-label {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(500px, 80vw);
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 11;
+    text-shadow: 0 0 4px rgba(0,0,0,0.9);
+    letter-spacing: 0.5px;
+  }
+  .combo-marker {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 1px;
+  }
+  .combo-marker-label {
+    position: absolute;
+    top: -14px;
+    font-size: 9px;
+    color: rgba(255,255,255,0.5);
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="ui">
+  <span>Score: <b id="score">0</b></span>
+  <span>Combo: <b id="combo">0</b></span>
+  <span>Lives: <b id="lives">20</b></span>
+</div>
+<div id="combo-bar">
+  <div id="combo-fill"></div>
+  <div class="combo-marker" style="left:33.3%"><span class="combo-marker-label">5 SLOW</span></div>
+  <div class="combo-marker" style="left:66.7%"><span class="combo-marker-label">10 FREEZE</span></div>
+</div>
+<div id="combo-label"></div>
+<div id="powerup" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);color:#ff0;font-size:24px;font-weight:bold;pointer-events:none;z-index:10;text-shadow:0 0 12px rgba(255,255,0,0.8);opacity:0;transition:opacity 0.3s;"></div>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const comboEl = document.getElementById('combo');
+const livesEl = document.getElementById('lives');
+const powerupEl = document.getElementById('powerup');
+const comboFillEl = document.getElementById('combo-fill');
+const comboLabelEl = document.getElementById('combo-label');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// --- Dynamic word generator (no hardcoded list!) ---
+const CONSONANTS = 'bcdfghjklmnprstvwxz';
+const VOWELS     = 'aeiou';
+
+// Common English letter patterns for short words
+// C=consonant, V=vowel
+const PATTERNS = [
+  // 2-letter: CV
+  ['C', 'V'],
+  // 3-letter: VC, CCV, CVC, CVV
+  ['V', 'C', 'V'],
+  ['CC', 'V'],
+  ['C', 'V', 'C'],
+  ['C', 'VV'],
+  // 4-letter: CVCC, CCVC, VCCV, CVCV
+  ['C', 'V', 'CC'],
+  ['CC', 'V', 'C'],
+  ['V', 'CC', 'V'],
+  ['C', 'V', 'C', 'V'],
+  // 5-letter: CVCCC, CCVCV, CVCVC
+  ['C', 'V', 'CCC'],
+  ['CC', 'V', 'C', 'V'],
+  ['C', 'V', 'C', 'V', 'C']
+];
+
+// Common digraphs/trigraphs that appear in real words
+const DIGRAPHS = {
+  CC: ['bl','br','cl','cr','dr','fl','fr','gl','gr','pl','pr','sc','sh','sk','sl','sm','sn','sp','st','sw','tr','tw','wr'],
+  CCC: ['sch','scr','str','spl','spr','squ','thr','tr'],
+  VV: ['ai','ea','ei','ie','oa','oo','ou','ue']
+};
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateWord() {
+  const pattern = pick(PATTERNS);
+  let word = '';
+  for (const token of pattern) {
+    if (token === 'C')      word += pick(CONSONANTS.split(''));
+    else if (token === 'V') word += pick(VOWELS.split(''));
+    else                    word += pick(DIGRAPHS[token]);
+  }
+  return word;
+}
+
+// --- Game state ---
+let score = 0;
+let lives = 20;
+let combo = 0;
+let gameOver = false;
+let targets = [];
+let missiles = [];
+let particles = [];
+let currentTarget = null;   // target currently being typed
+let spawnTimer = 0;
+const SPAWN_INTERVAL = 90; // frames between spawns (~1.5s at 60fps)
+
+// --- Power-up state ---
+let powerUpActive = false;
+let powerUpType = '';      // 'slow' | 'freeze' | 'clear'
+let powerUpTimer = 0;      // frames remaining
+let powerUpNotification = '';
+let powerUpNotifTimer = 0;
+
+// --- Fireworks state ---
+let fireworks = [];
+
+// --- Classes ---
+class Target {
+  constructor(word) {
+    this.word = word;
+    this.typed = '';         // how many chars typed so far
+    this.x = 80 + Math.random() * (W - 160);
+    this.y = H + 20;
+    this.baseSpeed = 0.4 + Math.random() * 0.5;
+    this.speed = this.baseSpeed;
+    this.alive = true;
+    this.color = `hsl(${Math.random()*360},80%,70%)`;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+  }
+
+  update() {
+    let effectiveSpeed = this.speed;
+    if (powerUpType === 'slow') effectiveSpeed *= 0.3;
+    if (powerUpType === 'freeze') effectiveSpeed = 0;
+    this.y -= effectiveSpeed;
+    this.pulsePhase += 0.05;
+    if (this.y < -30) {
+      this.alive = false;
+      return 'escaped';
+    }
+    return null;
+  }
+
+  draw() {
+    const alpha = 0.5 + 0.5 * Math.sin(this.pulsePhase);
+    ctx.font = 'bold 28px Courier New';
+    ctx.textAlign = 'center';
+
+    // typed portion (bright white)
+    const full = this.typed + this.word.slice(this.typed.length);
+    const fullWidth = ctx.measureText(full).width;
+    let offsetX = -fullWidth / 2;
+
+    // Draw typed chars in bright cyan
+    if (this.typed.length > 0) {
+      ctx.fillStyle = '#0ff';
+      ctx.shadowColor = '#0ff';
+      ctx.shadowBlur = 12;
+      ctx.fillText(this.typed, this.x + offsetX, this.y);
+      const tw = ctx.measureText(this.typed).width;
+      offsetX += tw;
+    }
+
+    // Draw cursor bracket on the next character to type
+    if (this === currentTarget && this.typed.length < this.word.length) {
+      const nextChar = this.word[this.typed.length];
+      const nextCharWidth = ctx.measureText(nextChar).width;
+      const cursorX = this.x + offsetX - nextCharWidth / 2 - 3;
+      const cursorW = nextCharWidth + 6;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = 6;
+      ctx.strokeRect(cursorX, this.y - 24, cursorW, 30);
+      ctx.shadowBlur = 0;
+    }
+
+    // Draw remaining chars in target color
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 8 * alpha;
+    ctx.fillText(this.word.slice(this.typed.length), this.x + offsetX, this.y);
+    ctx.shadowBlur = 0;
+  }
+}
+
+class Missile {
+  constructor(tx, ty) {
+    this.sx = W / 2;
+    this.sy = H - 10;
+    this.x = this.sx;
+    this.y = this.sy;
+    this.tx = tx;
+    this.ty = ty;
+    const dx = tx - this.sx;
+    const dy = ty - this.sy;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const speed = 12;
+    this.vx = (dx / dist) * speed;
+    this.vy = (dy / dist) * speed;
+    this.alive = true;
+    this.trail = [];
+    this.distTotal = dist;
+    this.distTraveled = 0;
+  }
+
+  update() {
+    // Store trail point
+    this.trail.push({ x: this.x, y: this.y, age: 0 });
+    if (this.trail.length > 20) this.trail.shift();
+    for (const t of this.trail) t.age++;
+
+    this.x += this.vx;
+    this.y += this.vy;
+    this.distTraveled += Math.sqrt(this.vx*this.vx + this.vy*this.vy);
+
+    if (this.distTraveled >= this.distTotal) {
+      this.alive = false;
+      spawnExplosion(this.tx, this.ty);
+    }
+  }
+
+  draw() {
+    // Draw trail
+    for (let i = 0; i < this.trail.length; i++) {
+      const t = this.trail[i];
+      const a = 1 - t.age / 25;
+      if (a <= 0) continue;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 3 * a, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,160,50,${a})`;
+      ctx.fill();
+    }
+
+    // Draw missile head
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#fa0';
+    ctx.shadowBlur = 16;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+class Particle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.life = 1.0;
+    this.decay = 0.015 + Math.random() * 0.025;
+    this.size = 2 + Math.random() * 4;
+    const hue = Math.random() > 0.5 ? '30,100%,60%' : '180,100%,70%';
+    this.color = `hsl(${hue})`;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.05; // slight gravity
+    this.life -= this.decay;
+  }
+
+  draw() {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnExplosion(x, y) {
+  for (let i = 0; i < 30; i++) {
+    particles.push(new Particle(x, y));
+  }
+}
+
+// --- Input handling ---
+document.addEventListener('keydown', (e) => {
+  if (gameOver) {
+    if (e.key === ' ') restartGame();
+    return;
+  }
+
+  // Backspace: undo last typed character
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    if (currentTarget !== null) {
+      currentTarget.typed = currentTarget.typed.slice(0, -1);
+      if (currentTarget.typed.length === 0) {
+        currentTarget = null;
+      }
+    }
+    // Mistake — reset combo!
+    combo = 0;
+    comboEl.textContent = '0';
+    updateComboBar();
+    return;
+  }
+
+  const key = e.key.toLowerCase();
+  // Only accept a-z
+  if (!/^[a-z]$/.test(key)) return;
+
+  // No current target: find one whose first letter matches
+  if (currentTarget === null) {
+    for (const t of targets) {
+      if (t.word[0] === key) {
+        currentTarget = t;
+        t.typed += key;
+        checkWordComplete(t);
+        break;
+      }
+    }
+  } else {
+    // Current target exists: match next char
+    const idx = currentTarget.typed.length;
+    if (currentTarget.word[idx] === key) {
+      currentTarget.typed += key;
+      checkWordComplete(currentTarget);
+    }
+    // Wrong letter — ignore it (don't switch targets, let player correct with Backspace)
+    // But reset combo on wrong keypress!
+    if (currentTarget.word[idx] !== key) {
+      combo = 0;
+      comboEl.textContent = '0';
+      updateComboBar();
+    }
+  }
+});
+
+function checkWordComplete(target) {
+  if (target.typed.length === target.word.length) {
+    // Word fully typed — launch missile!
+    missiles.push(new Missile(target.x, target.y));
+    target.alive = false;  // mark for removal after missile arrives
+    if (target === currentTarget) {
+      currentTarget = null;
+    }
+  }
+}
+
+// --- Power-up system ---
+const MAX_COMBO_BAR = 15;
+const POWER_UPS = [
+  { at: 5, label: 'SLOW MOTION', color: '#ffc800' },
+  { at: 10, label: 'FREEZE', color: '#6496ff' },
+  { at: 15, label: 'SCREEN CLEAR', color: '#ff4060' },
+];
+
+function updateComboBar() {
+  const pct = Math.min(combo / MAX_COMBO_BAR * 100, 100);
+  comboFillEl.style.width = pct + '%';
+
+  // Determine next milestone and set fill color
+  let next = POWER_UPS.find(p => p.at > combo);
+  if (next) {
+    const remaining = next.at - combo;
+    comboLabelEl.textContent = `NEXT: ${remaining} MORE → ${next.label}`;
+    comboFillEl.style.background = `linear-gradient(90deg, rgba(${hexToRgb(next.color)},0.6), ${next.color})`;
+  } else {
+    comboLabelEl.textContent = 'MAX COMBO!';
+    comboFillEl.style.background = '#ff4060';
+  }
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return `${r},${g},${b}`;
+}
+
+function checkPowerUp() {
+  for (const pu of POWER_UPS) {
+    if (combo >= pu.at && !powerUpActive) {
+      activatePowerUp(pu.at, pu.label, pu.color);
+      break;
+    }
+  }
+}
+
+function activatePowerUp(at, label, color) {
+  powerUpActive = true;
+
+  if (at === 15) {
+    powerUpType = 'clear';
+    for (const t of targets) {
+      spawnExplosion(t.x, t.y);
+      score += 10;
+    }
+    targets = [];
+    currentTarget = null;
+    combo = 0;            // Reset combo so player can cycle through power-ups again
+    comboEl.textContent = '0';
+    updateComboBar();
+    powerUpActive = false; // Reset immediately — screen clear is instant, not time-based
+    powerUpType = '';      // Clear type so next cycle works
+    showPowerUpNotification(`COMBO x${at} — ${label}!`, color);
+    launchFireworks();     // Fireworks celebration!
+  } else if (at === 10) {
+    powerUpType = 'freeze';
+    powerUpTimer = 240;
+    showPowerUpNotification(`COMBO x${at} — ${label}!`, color);
+  } else if (at === 5) {
+    powerUpType = 'slow';
+    powerUpTimer = 300;
+    showPowerUpNotification(`COMBO x${at} — ${label}!`, color);
+  }
+}
+
+// --- Fireworks system ---
+class FireworkRocket {
+  constructor(x, targetY) {
+    this.x = x;
+    this.y = H - 20;
+    this.targetY = targetY;
+    this.vy = -(4 + Math.random() * 3);
+    this.trail = [];
+    this.exploded = false;
+  }
+
+  update() {
+    if (!this.exploded) {
+      this.trail.push({ x: this.x, y: this.y, life: 1.0 });
+      this.y += this.vy;
+      // Fade trail
+      for (const t of this.trail) t.life -= 0.04;
+      this.trail = this.trail.filter(t => t.life > 0);
+
+      if (this.y <= this.targetY) {
+        this.exploded = true;
+        spawnFireworkBurst(this.x, this.y);
+      }
+    }
+  }
+
+  draw() {
+    // Draw trail
+    for (const t of this.trail) {
+      ctx.globalAlpha = t.life * 0.6;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffa';
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Draw rocket head
+    if (!this.exploded) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.shadowColor = '#ffa';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+// Firework burst particles (separate from regular explosion - more colorful, sparkle)
+class FireworkParticle {
+  constructor(x, y, hue) {
+    this.x = x;
+    this.y = y;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1.5 + Math.random() * 4;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.life = 1.0;
+    this.decay = 0.008 + Math.random() * 0.012;
+    this.size = 1.5 + Math.random() * 3;
+    this.hue = hue + Math.random() * 30 - 15;
+    this.sparkle = Math.random(); // for twinkling
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vx *= 0.98;        // air resistance
+    this.vy *= 0.98;
+    this.vy += 0.03;         // slight gravity
+    this.life -= this.decay;
+    this.sparkle = Math.random();
+  }
+
+  draw() {
+    const a = Math.max(0, this.life * (0.6 + 0.4 * this.sparkle));
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${this.hue},100%,65%)`;
+    ctx.shadowColor = `hsl(${this.hue},100%,70%)`;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+let fireworkParticles = [];
+
+function launchFireworks() {
+  fireworks = [];
+  fireworkParticles = [];
+  // Launch multiple rockets at staggered times/positions
+  const count = 8 + Math.floor(Math.random() * 5);
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const x = W * 0.15 + Math.random() * W * 0.7;
+      const targetY = H * 0.1 + Math.random() * H * 0.35;
+      fireworks.push(new FireworkRocket(x, targetY));
+    }, i * (80 + Math.random() * 60));
+  }
+}
+
+function spawnFireworkBurst(x, y) {
+  const hue = Math.random() * 360;
+  const count = 40 + Math.floor(Math.random() * 25);
+  for (let i = 0; i < count; i++) {
+    fireworkParticles.push(new FireworkParticle(x, y, hue));
+  }
+}
+
+function showPowerUpNotification(text, color) {
+  powerupEl.textContent = text;
+  powerupEl.style.opacity = '1';
+  powerupEl.style.color = color || '#ff0';
+  powerUpNotifTimer = 120;
+}
+
+// --- Spawning ---
+// Track generated words to avoid immediate repeats
+let recentWords = [];
+const MAX_RECENT = 20;
+
+function spawnTarget() {
+  let word;
+  let attempts = 0;
+  do {
+    word = generateWord();
+    attempts++;
+  } while (recentWords.includes(word) && attempts < 50);
+  
+  recentWords.push(word);
+  if (recentWords.length > MAX_RECENT) recentWords.shift();
+  targets.push(new Target(word));
+}
+
+// --- Stars background ---
+const stars = [];
+for (let i = 0; i < 120; i++) {
+  stars.push({
+    x: Math.random() * 2000,
+    y: Math.random() * 2000,
+    r: 0.5 + Math.random() * 1.5,
+    twinkle: Math.random() * Math.PI * 2
+  });
+}
+
+function drawStars() {
+  for (const s of stars) {
+    s.twinkle += 0.02;
+    const a = 0.4 + 0.6 * Math.abs(Math.sin(s.twinkle));
+    ctx.beginPath();
+    ctx.arc(s.x % W, s.y % H, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.fill();
+  }
+}
+
+// --- Missile launch point indicator ---
+function drawLauncher() {
+  const cx = W / 2;
+  const cy = H - 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, Math.PI, 0);
+  ctx.fillStyle = '#f64';
+  ctx.shadowColor = '#f64';
+  ctx.shadowBlur = 20;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// --- Game over / restart ---
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = 'bold 48px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f44';
+  ctx.shadowColor = '#f44';
+  ctx.shadowBlur = 20;
+  ctx.fillText('GAME OVER', W/2, H/2 - 30);
+  ctx.font = '24px Courier New';
+  ctx.fillStyle = '#fff';
+  ctx.shadowBlur = 0;
+  ctx.fillText(`Final Score: ${score}`, W/2, H/2 + 20);
+  ctx.fillText('Press SPACE to restart', W/2, H/2 + 60);
+}
+
+function restartGame() {
+  score = 0;
+  lives = 20;
+  combo = 0;
+  gameOver = false;
+  targets = [];
+  missiles = [];
+  particles = [];
+  currentTarget = null;
+  spawnTimer = 0;
+  powerUpActive = false;
+  powerUpType = '';
+  powerUpTimer = 0;
+  powerUpNotifTimer = 0;
+  scoreEl.textContent = '0';
+  comboEl.textContent = '0';
+  livesEl.textContent = '20';
+  powerupEl.style.opacity = '0';
+  updateComboBar();
+}
+
+// --- Main loop ---
+function loop() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a0a2e');
+  grad.addColorStop(1, '#151540');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawStars();
+
+  if (!gameOver) {
+    // Spawn targets
+    spawnTimer++;
+    if (spawnTimer >= SPAWN_INTERVAL) {
+      spawnTarget();
+      spawnTimer = 0;
+    }
+
+    // Update & remove dead missiles first, then clean up hit targets
+    const deadMissileHits = [];
+    missiles = missiles.filter(m => {
+      m.update();
+      if (!m.alive) {
+        deadMissileHits.push({ tx: m.tx, ty: m.ty });
+        return false;
+      }
+      return true;
+    });
+
+    // Score for each missile that reached its target
+    // (missiles are only launched for fully-typed words, so every dead missile = a point)
+    for (const hit of deadMissileHits) {
+      combo++;
+      score += 10 * Math.max(1, Math.floor(combo / 3));
+      scoreEl.textContent = score;
+      comboEl.textContent = combo;
+      updateComboBar();
+      checkPowerUp();
+    }
+
+    // Update targets
+    let escapedCount = 0;
+    for (const t of targets) {
+      const result = t.update();
+      if (result === 'escaped') {
+        escapedCount++;
+        if (currentTarget === t) currentTarget = null;
+      }
+    }
+
+    // Remove dead/escaped targets
+    targets = targets.filter(t => t.alive);
+
+    if (escapedCount > 0) {
+      lives -= escapedCount;
+      combo = 0; // Word escaped — reset combo!
+      comboEl.textContent = '0';
+      updateComboBar();
+      powerUpType = ''; // Deactivate any active power-up
+      powerUpActive = false;
+      livesEl.textContent = Math.max(0, lives);
+      if (lives <= 0) gameOver = true;
+    }
+
+    // Update power-up timer
+    if (powerUpTimer > 0) {
+      powerUpTimer--;
+      if (powerUpTimer <= 0 && powerUpType !== 'clear') {
+        powerUpType = '';
+        powerUpActive = false;
+      }
+    }
+
+    // Update power-up notification fade
+    if (powerUpNotifTimer > 0) {
+      powerUpNotifTimer--;
+      if (powerUpNotifTimer <= 30) {
+        powerupEl.style.opacity = String(powerUpNotifTimer / 30);
+      }
+    }
+
+    // Update fireworks rockets
+    for (const fw of fireworks) fw.update();
+    fireworks = fireworks.filter(fw => !fw.exploded || fw.trail.length > 0);
+
+    // Update firework particles
+    for (const fp of fireworkParticles) fp.update();
+    fireworkParticles = fireworkParticles.filter(fp => fp.life > 0);
+
+    // Update regular particles
+    particles.forEach(p => p.update());
+    particles = particles.filter(p => p.life > 0);
+
+    // Draw everything
+    drawLauncher();
+    for (const t of targets) t.draw();
+    for (const m of missiles) m.draw();
+    for (const fw of fireworks) fw.draw();
+    for (const fp of fireworkParticles) fp.draw();
+    for (const p of particles) p.draw();
+
+    // Highlight current target with a ring
+    if (currentTarget && currentTarget.alive) {
+      ctx.beginPath();
+      ctx.arc(currentTarget.x, currentTarget.y - 18, 30, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,255,255,0.4)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Draw power-up active indicator at bottom of screen
+    if (powerUpActive && powerUpType !== 'clear') {
+      const barWidth = (powerUpTimer / (powerUpType === 'slow' ? 300 : 240)) * W;
+      ctx.fillStyle = powerUpType === 'freeze' ? 'rgba(100,150,255,0.3)' : 'rgba(255,255,0,0.3)';
+      ctx.fillRect(0, H - 4, barWidth, 4);
+    }
+  }
+
+  if (gameOver) {
+    for (const p of particles) p.draw();
+    drawGameOver();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>

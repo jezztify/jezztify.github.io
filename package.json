@@ -1,0 +1,8 @@
+{
+  "name": "jezztify-hobby-gallery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-gallery.mjs"
+  }
+}

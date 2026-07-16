@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<meta description="A vibe-coded space invaders clone using qwen3.5-27b-claude-4.6-opus-reasoning-distilled model.">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>SPACE INVADERS</h1>
+            <div class="score-board">
+                <span>Score: <span id="score">0</span></span>
+                <span>Lives: <span id="lives">3</span></span>
+                <span>Level: <span id="level">1</span></span>
+            </div>
+        </header>
+        
+        <div class="game-wrapper">
+            <canvas id="gameCanvas"></canvas>
+            <div id="startScreen" class="screen">
+                <h2>SPACE INVADERS</h2>
+                <p>Use ← → Arrow Keys to Move</p>
+                <p>Press SPACE to Shoot</p>
+                <button id="startBtn">START GAME</button>
+            </div>
+            <div id="gameOverScreen" class="screen hidden">
+                <h2>GAME OVER</h2>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <button id="restartBtn">PLAY AGAIN</button>
+            </div>
+            <div id="levelScreen" class="screen hidden">
+                <h2>LEVEL UP!</h2>
+                <p>Get Ready...</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Built with ❤️ using HTML5 Canvas</p>
+        </footer>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
