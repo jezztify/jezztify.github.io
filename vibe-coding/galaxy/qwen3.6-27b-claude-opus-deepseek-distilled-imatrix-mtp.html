@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Procedural Galaxy Explorer — Phase 6: HUD + Cinematic Intro + Polish</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+canvas { display: block; }
+
+#hud {
+position: fixed; top: 0; left: 0; z-index: 100; pointer-events: none;
+font-family: 'Courier New', monospace; color: rgba(255,255,255,0.7); font-size: 14px;
+}
+#speed-readout { padding: 16px; }
+#nearest-body {
+position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%);
+font-family: 'Courier New', monospace; color: rgba(200,220,255,0.8); font-size: 13px;
+text-align: center; z-index: 100; pointer-events: none; line-height: 1.5;
+}
+#crosshair {
+position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+width: 24px; height: 24px; z-index: 100; pointer-events: none; display: none;
+}
+#crosshair::before {
+content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+border: 2px solid rgba(255,255,255,0.4); border-radius: 50%;
+}
+
+#instructions {
+position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+font-family: 'Courier New', monospace; color: rgba(255,255,255,0.5); font-size: 13px;
+text-align: center; z-index: 100; pointer-events: none; line-height: 1.6;
+}
+
+/* Vignette overlay — dark edges for cinematic feel */
+#vignette {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+pointer-events: none; z-index: 50;
+background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+}
+
+/* Cinematic intro overlay */
+#intro-overlay {
+position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+z-index: 200; background: #000; display: flex; align-items: center; justify-content: center;
+flex-direction: column; cursor: pointer; transition: opacity 2.5s ease-out;
+}
+#intro-overlay.hidden { opacity: 0; pointer-events: none; }
+#intro-title {
+font-family: 'Courier New', monospace; font-size: clamp(24px, 5vw, 64px);
+color: #fff; letter-spacing: 0.3em; text-transform: uppercase;
+text-shadow: 0 0 20px rgba(100,150,255,0.8), 0 0 60px rgba(100,150,255,0.4);
+opacity: 0; animation: fadeInTitle 3s ease-out 0.5s forwards;
+}
+#intro-subtitle {
+font-family: 'Courier New', monospace; font-size: clamp(12px, 2vw, 20px);
+color: rgba(200,220,255,0.7); letter-spacing: 0.5em; margin-top: 30px;
+opacity: 0; animation: pulseSubtitle 2s ease-in-out 4s forwards;
+}
+@keyframes fadeInTitle { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseSubtitle { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+</style>
+
+<script type="importmap">
+{
+"imports": {
+"three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+"three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+}
+}
+</script>
+</head>
+<body>
+
+<div id="intro-overlay">
+<div id="intro-title">Procedural Galaxy Explorer</div>
+<div id="intro-subtitle">Click to Fly</div>
+</div>
+
+<div id="vignette"></div>
+
+<div id="hud">
+<div id="speed-readout">Speed: 0.0 m/s</div>
+</div>
+<div id="nearest-body"></div>
+<div id="crosshair"></div>
+<div id="instructions">Click to fly &middot; WASD thrust/strafe &middot; Q/E up/down &middot; R/F roll &middot; Space brake</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ─── Renderer ──────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.4;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+// Logarithmic depth buffer — Three.js r163+ supports this natively
+try { renderer.logarithmicDepthBuffer = true; } catch (_) { /* fallback: large near/far */ }
+
+document.body.appendChild(renderer.domElement);
+
+// ─── Scene + Camera ────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020208);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1e7);
+camera.position.set(0, 5, 30);
+
+// ─── Post-processing pipeline ──────────────────────────────
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+new THREE.Vector2(window.innerWidth, window.innerHeight),
+0.5,  // strength
+0.4,  // radius
+0.85  // threshold
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+// ─── Lighting (minimal — bloom does the heavy lifting) ─────
+scene.add(new THREE.AmbientLight(0x111122, 0.3));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+dirLight.position.set(50, 80, 40);
+scene.add(dirLight);
+
+// ─── Test scene: colored spheres + one emissive for bloom ──
+const testGeometries = [
+{ pos: [-15, 3, -20], radius: 3, color: 0xff4466 },
+{ pos: [20, -2, -35], radius: 2.5, color: 0x44aaff },
+{ pos: [8, 10, -50], radius: 4, color: 0xaaff44 },
+{ pos: [-25, -5, -60], radius: 2, color: 0xffaa22 },
+{ pos: [30, 7, -80], radius: 3.5, color: 0xaa44ff },
+];
+
+for (const g of testGeometries) {
+const mat = new THREE.MeshStandardMaterial({
+color: g.color, roughness: 0.3, metalness: 0.1
+});
+const mesh = new THREE.Mesh(new THREE.SphereGeometry(g.radius, 32, 32), mat);
+mesh.position.set(...g.pos);
+scene.add(mesh);
+}
+
+// Emissive sphere to make bloom visible
+const glowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x8844ff, emissiveIntensity: 2.5 });
+const glowSphere = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), glowMat);
+glowSphere.position.set(0, 0, -40);
+scene.add(glowSphere);
+
+// ─── Phase 2: Procedural Stars + Deep Space ────────────────
+
+// --- Hash function (FNV-1a style) for seeding PRNG from coords ---
+function hashCoords(cx, cy, cz, typeStr) {
+let h = 0x811c9dc5; // FNV offset basis
+const key = `${cx},${cy},${cz},${typeStr}`;
+for (let i = 0; i < key.length; i++) {
+h ^= key.charCodeAt(i);
+h = Math.imul(h, 0x01000193); // FNV prime
+}
+return h >>> 0; // unsigned 32-bit
+}
+
+// --- Mulberry32 PRNG (fast, good quality for spatial gen) ---
+function mulberry3a(seed) {
+return function () {
+seed |= 0; seed = seed + 0x6d2b79f5 | 0;
+let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+return ((t ^ (t >>> 14)) >>> 0) / 4294967296; // [0, 1)
+};
+}
+
+// --- Spectral class data for star colors and sizes ---
+const SPECTRAL_CLASSES = [
+{ type: 'O', color: new THREE.Color(0.5, 0.5, 1.0), minSize: 2.0, maxSize: 4.0, weight: 0.008 },
+{ type: 'B', color: new THREE.Color(0.6, 0.65, 1.0), minSize: 1.5, maxSize: 3.0, weight: 0.09 },
+{ type: 'A', color: new THREE.Color(0.78, 0.82, 1.0), minSize: 1.2, maxSize: 2.2, weight: 0.15 },
+{ type: 'F', color: new THREE.Color(0.93, 0.94, 0.87), minSize: 0.9, maxSize: 1.5, weight: 0.16 },
+{ type: 'G', color: new THREE.Color(1.0, 0.98, 0.82), minSize: 0.7, maxSize: 1.2, weight: 0.24 }, // Sun-like
+{ type: 'K', color: new THREE.Color(1.0, 0.75, 0.53), minSize: 0.5, maxSize: 0.9, weight: 0.28 },
+{ type: 'M', color: new THREE.Color(1.0, 0.46, 0.3), minSize: 0.2, maxSize: 0.6, weight: 0.072 }, // Red dwarf
+];
+
+function pickSpectralClass(rng) {
+const r = rng();
+let cumulative = 0;
+for (const cls of SPECTRAL_CLASSES) {
+cumulative += cls.weight;
+if (r < cumulative) return cls;
+}
+return SPECTRAL_CLASSES[SPECTRAL_CLASSES.length - 1]; // fallback M dwarf
+}
+
+// --- Chunk streaming system ---
+const CHUNK_SIZE = 1000.0;          // units per chunk
+const CHUNK_LOAD_RADIUS = 3;        // load chunks within N chunk radii of camera
+const DISTANT_STARS_PER_CHUNK = 6000;
+const NEARBY_STARS_PER_CHUNK = 35;
+
+// Active chunk tracking: key "cx,cy,cz" → { distantPoints, nearbyInstanced }
+const activeChunks = new Map();
+
+function getChunkKey(cx, cy, cz) { return `${cx},${cy},${cz}`; }
+
+function disposeChunk(chunkData) {
+if (chunkData.distantPoints) {
+chunkData.distantPoints.geometry.dispose();
+chunkData.distantPoints.material.dispose();
+scene.remove(chunkData.distantPoints);
+}
+if (chunkData.nearbyInstanced) {
+chunkData.nearbyInstanced.geometry.dispose();
+chunkData.nearbyInstanced.material.dispose();
+scene.remove(chunkData.nearbyInstanced);
+}
+}
+
+// --- Distant star field via THREE.Points with custom ShaderMaterial ---
+const distantStarVertexShader = `
+attribute float aSize;
+attribute vec3 aColor;
+attribute float aTwinklePhase;
+
+uniform float uTime;
+uniform float uPixelRatio;
+
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+vColor = aColor;
+
+// Twinkle: subtle brightness oscillation using sin with hash-based phase offset
+float twinkle = 0.7 + 0.3 * sin(uTime * 1.5 + aTwinklePhase);
+vAlpha = twinkle;
+
+vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+gl_PointSize = aSize * uPixelRatio * (200.0 / -mvPosition.z); // size attenuation
+gl_PointSize = max(gl_PointSize, 1.0); // minimum visible size
+gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const distantStarFragmentShader = `
+varying vec3 vColor;
+varying float vAlpha;
+
+void main() {
+// Circular point with soft falloff at edges
+vec2 center = gl_PointCoord - 0.5;
+float dist = length(center);
+if (dist > 0.5) discard;
+
+float brightness = smoothstep(0.5, 0.1, dist); // brighter in center
+gl_FragColor = vec4(vColor * brightness, vAlpha * brightness);
+}
+`;
+
+function createDistantStars(cx, cy, cz) {
+const seed = hashCoords(cx, cy, cz, 'distant_stars');
+const rng = mulberry3a(seed);
+
+const count = DISTANT_STARS_PER_CHUNK;
+const positions = new Float32Array(count * 3);
+const colors = new Float32Array(count * 3);
+const sizes = new Float32Array(count);
+const twinklePhases = new Float32Array(count);
+
+for (let i = 0; i < count; i++) {
+// Position within chunk with some padding from edges
+positions[i * 3] = cx * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE;
+positions[i * 3 + 1] = cy * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE;
+positions[i * 3 + 2] = cz * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE;
+
+// Spectral color with slight variation
+const cls = pickSpectralClass(rng);
+const colorVar = rng() * 0.15 - 0.075; // ±7.5% variation
+colors[i * 3] = Math.max(0, Math.min(1, cls.color.r + colorVar));
+colors[i * 3 + 1] = Math.max(0, Math.min(1, cls.color.g + colorVar));
+colors[i * 3 + 2] = Math.max(0, Math.min(1, cls.color.b + colorVar));
+
+// Size: distant stars are small points (1-4 world units)
+sizes[i] = 1.0 + rng() * 3.0;
+
+// Twinkle phase offset from hash — deterministic per star index
+twinklePhases[i] = rng() * Math.PI * 2;
+}
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
+geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+geometry.setAttribute('aTwinklePhase', new THREE.BufferAttribute(twinklePhases, 1));
+
+const material = new THREE.ShaderMaterial({
+vertexShader: distantStarVertexShader,
+fragmentShader: distantStarFragmentShader,
+uniforms: {
+uTime: { value: 0 },
+uPixelRatio: { value: renderer.getPixelRatio() }
+},
+transparent: true,
+depthWrite: false,
+blending: THREE.AdditiveBlending,
+});
+
+const points = new THREE.Points(geometry, material);
+scene.add(points);
+return points;
+}
+
+// --- Nearby star systems via InstancedMesh (LOD for closer stars) ---
+function createNearbyStars(cx, cy, cz) {
+const seed = hashCoords(cx, cy, cz, 'nearby_stars');
+const rng = mulberry3a(seed);
+
+const count = NEARBY_STARS_PER_CHUNK;
+const geometry = new THREE.SphereGeometry(1.0, 8, 6); // low-poly spheres for performance
+const material = new THREE.MeshStandardMaterial({
+roughness: 0.2, metalness: 0.0, emissiveIntensity: 3.0
+});
+
+const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+const dummy = new THREE.Object3D();
+const tempColor = new THREE.Color();
+const instanceColors = [];
+
+for (let i = 0; i < count; i++) {
+// Position within chunk
+dummy.position.set(
+cx * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE,
+cy * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE,
+cz * CHUNK_SIZE + (rng() - 0.5) * CHUNK_SIZE
+);
+
+// Scale based on spectral class — red dwarfs small, blue giants large
+const cls = pickSpectralClass(rng);
+const sizeScale = cls.minSize + rng() * (cls.maxSize - cls.minSize);
+dummy.scale.set(sizeScale, sizeScale, sizeScale);
+dummy.updateMatrix();
+
+instancedMesh.setMatrixAt(i, dummy.matrix);
+tempColor.copy(cls.color).multiplyScalar(1.5); // boost for emissive glow
+instanceColors.push(tempColor.r, tempColor.g, tempColor.b);
+}
+
+instancedMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(instanceColors), 3);
+// Use instance color to drive emissive — set base material emissive white and tint per-instance
+material.emissive.set(0xffffff);
+if (instancedMesh.instanceMatrix) instancedMesh.instanceMatrix.needsUpdate = true;
+
+scene.add(instancedMesh);
+return instancedMesh;
+}
+
+// --- Milky Way backdrop: massive sphere with FBM noise shader ---
+const milkyWayVertexShader = `
+varying vec3 vWorldPosition;
+void main() {
+vec4 worldPos = modelMatrix * vec4(position, 1.0);
+vWorldPosition = worldPos.xyz;
+gl_Position = projectionMatrix * viewMatrix * worldPos;
+}
+`;
+
+const milkyWayFragmentShader = `
+uniform float uTime;
+varying vec3 vWorldPosition;
+
+// GLSL hash for noise
+float hash(vec2 p) {
+return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Value noise with smooth interpolation
+float noise(vec2 p) {
+vec2 i = floor(p);
+vec2 f = fract(p);
+f = f * f * (3.0 - 2.0 * f); // smoothstep
+return mix(
+mix(hash(i), hash(i + vec2(1, 0)), f.x),
+mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x),
+f.y
+);
+}
+
+// FBM (Fractional Brownian Motion) — layered noise for organic structure
+float fbm(vec2 p, int octaves) {
+float value = 0.0;
+float amplitude = 0.5;
+float frequency = 1.0;
+for (int i = 0; i < 8; i++) { // compile-time max octaves
+if (i >= octaves) break;
+value += amplitude * noise(p * frequency);
+amplitude *= 0.5;
+frequency *= 2.0;
+}
+return value;
+}
+
+void main() {
+// Normalize position to get spherical coords for banding
+vec3 dir = normalize(vWorldPosition);
+
+// Galactic plane: use Y component (elevation) with smooth falloff
+float elevation = abs(dir.y);
+float galacticBand = exp(-elevation * 4.0); // narrow band at equator
+
+// Add structure to the band using FBM noise on spherical coords
+float theta = atan(dir.z, dir.x); // azimuthal angle
+float phi = asin(clamp(dir.y, -1.0, 1.0)); // polar angle
+
+vec2 sphereUV = vec2(theta * 3.0 / 6.28318, phi * 0.5 + 0.5);
+float bandNoise = fbm(sphereUV * 4.0 + uTime * 0.002, 6); // subtle drift
+
+// Color palette: warm core glow with blue/purple edges
+vec3 coreColor = vec3(0.9, 0.82, 0.75);   // warm white-yellow
+vec3 midColor = vec3(0.4, 0.35, 0.6);     // purple-blue
+vec3 edgeColor = vec3(0.15, 0.12, 0.3);    // deep blue-purple
+
+// Mix colors based on band intensity and noise
+float intensity = galacticBand * (0.4 + 0.6 * bandNoise);
+intensity *= smoothstep(0.8, 0.0, elevation); // fade at poles
+
+vec3 color = mix(edgeColor, midColor, intensity);
+color = mix(color, coreColor, pow(intensity, 2.5) * galacticBand);
+
+// Add subtle star-field speckle in the band
+float speckle = hash(floor(dir.xy * 800.0));
+speckle *= step(0.97, speckle) * intensity; // only visible where band is bright
+color += vec3(speckle * 0.15);
+
+// Very subtle time-based shimmer
+float shimmer = fbm(vec2(theta + uTime * 0.005, phi), 4) * 0.05;
+color += shimmer * galacticBand;
+
+gl_FragColor = vec4(color, intensity * 0.6); // semi-transparent for layering over background
+}
+`;
+
+// Create Milky Way sphere — massive radius surrounding the scene
+const milkyWayGeometry = new THREE.SphereGeometry(5e6, 32, 16); // huge sphere, low poly count
+const milkyWayMaterial = new THREE.ShaderMaterial({
+vertexShader: milkyWayVertexShader,
+fragmentShader: milkyWayFragmentShader,
+uniforms: { uTime: { value: 0 } },
+side: THREE.BackSide, // render inside of the sphere
+transparent: true,
+depthWrite: false,
+blending: THREE.AdditiveBlending,
+});
+const milkyWaySphere = new THREE.Mesh(milkyWayGeometry, milkyWayMaterial);
+scene.add(milkyWaySphere);
+
+// --- Chunk management function called each frame ---
+function updateChunks() {
+// Current chunk coordinates from camera position
+const camCx = Math.floor(camera.position.x / CHUNK_SIZE);
+const camCy = Math.floor(camera.position.y / CHUNK_SIZE);
+const camCz = Math.floor(camera.position.z / CHUNK_SIZE);
+
+// Determine which chunks should be active (within load radius)
+const neededChunks = new Set();
+for (let dx = -CHUNK_LOAD_RADIUS; dx <= CHUNK_LOAD_RADIUS; dx++) {
+for (let dy = -CHUNK_LOAD_RADIUS; dy <= CHUNK_LOAD_RADIUS; dy++) {
+for (let dz = -CHUNK_LOAD_RADIUS; dz <= CHUNK_LOAD_RADIUS; dz++) {
+const cx = camCx + dx;
+const cy = camCy + dy;
+const cz = camCz + dz;
+neededChunks.add(getChunkKey(cx, cy, cz));
+}
+}
+}
+
+// Load new chunks
+for (const key of neededChunks) {
+if (!activeChunks.has(key)) {
+const [cxStr, cyStr, czStr] = key.split(',');
+const cx = parseInt(cxStr);
+const cy = parseInt(cyStr);
+const cz = parseInt(czStr);
+
+// Create both distant points and nearby instanced mesh for this chunk
+const distantPoints = createDistantStars(cx, cy, cz);
+const nearbyInstanced = createNearbyStars(cx, cy, cz);
+
+activeChunks.set(key, { distantPoints, nearbyInstanced });
+}
+}
+
+// Unload chunks that are no longer needed
+for (const [key, chunkData] of activeChunks) {
+if (!neededChunks.has(key)) {
+disposeChunk(chunkData);
+activeChunks.delete(key);
+}
+}
+}
+
+// ════════════════════════════════════════════════════════════
+// Phase 3: Star Systems — Planets / Rings / Moons / Asteroids
+// ════════════════════════════════════════════════════════════
+
+const SYSTEM_LOAD_RADIUS = 500.0;   // units from camera to trigger system gen
+const PLANET_DETAIL_SEGMENTS = 32;
+
+// ── Shared GLSL noise (used by planet, cloud, asteroid shaders) ──
+const NOISE_GLSL = `
+float hashV(vec3 p){ return fract(1e4*sin(dot(p,vec3(.1031,.103097,.0973)))*43758.5453); }
+
+float vnoise(vec3 p){
+  vec3 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(mix(hashV(i),hashV(i+vec3(1,0,0)),f.x),
+                 mix(hashV(i+vec3(0,1,0)),hashV(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(hashV(i+vec3(0,0,1)),hashV(i+vec3(1,0,1)),f.x),
+                 mix(hashV(i+vec3(0,1,1)),hashV(i+vec3(1,1,1)),f.x),f.y),f.z);
+}
+
+float fbmN(vec3 p,int oct){
+  float v=0.,a=.5; vec3 f=p;
+  for(int i=0;i<8;i++){if(i>=oct)break; v+=a*vnoise(f); f*=2.; a*=.5;}
+  return v;
+}
+
+float ringShadow(float rDist,float innerR,float outerR){
+  float band=smoothstep(innerR-1.,innerR+2.,rDist)*smoothstep(outerR+2.,outerR-1.,rDist);
+  return mix(.35,1.,band)*(0.7+.3*sin(rDist*8.));}`;
+
+// ── Planet ShaderMaterial (rocky / gas-giant / ice) ──
+const planetVert = `varying vec3 vWP,vNorm;void main(){vNorm=normalize(normalMatrix*normal);
+  vec4 wp=modelMatrix*vec4(position,1.);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}`;
+
+const planetFrag = NOISE_GLSL + `uniform float uSeed,uScale,uTime;uniform int uType;varying vec3 vWP,vNorm;void main(){
+  vec3 n=normalize(vNorm);float d=length(n.xz);vec3 tp=d>1e-4?n:vec3(0,1,0);
+  float N0=fbmN((vWP+uSeed*7.)*uScale,6),N1=fbmN((vWP+uSeed*13.+50.)*uScale*.8,5);
+  vec3 col;
+  if(uType==0){col=mix(vec3(.2,.14,.1),vec3(.55,.5,.47),smoothstep(.3,.6,N0));
+    col+=mix(-.1,.15,N1-0.5)*tp.y;}
+  else if(uType==1){float band=abs(sin(atan(n.z,n.x)*3.+N0*2.5+tp.y*4.));
+    vec3 c0=mix(vec3(.82,.6,.4),vec3(.95,.78,.55),smoothstep(.2,.7,N1));
+    col=mix(c0,vec3(.6,.45,.3),band*.5);float storm=smoothstep(.72,0.,abs(tp.y-.3))*smoothstep(.6,.9,N0);
+    col+=storm*vec3(.2,-.1,-.15);}
+  else{col=mix(vec3(.35,.48,.7),vec3(.82,.88,.97),smoothstep(.25,.7,N0));
+    float cry=smoothstep(.6,0.,abs(sin(N1*12.+tp.y*8.)));col+=cry*.1;}
+  col*=mix(.4,1.,max(dot(n,normalize(vec3(1,.5,.3))),0.)*.5+.5);gl_FragColor=vec4(col,1.);}`;
+
+// ── Atmosphere (Fresnel rim glow) ──
+const atmosVert = `varying vec3 vNorm,vViewDir;void main(){vNorm=normalize(normalMatrix*normal);
+  vec4 wp=modelMatrix*vec4(position,1.);vViewDir=normalize(cameraPosition-wp.xyz);
+  gl_Position=projectionMatrix*viewMatrix*wp;}`;
+
+const atmosFrag = `varying vec3 vNorm,vViewDir;void main(){
+  float rim=pow(1.-max(dot(vNorm,vViewDir),0.),3.);gl_FragColor=vec4(.3,.5,1.,rim*.6);}`;
+
+// ── Cloud layer (animated noise) ──
+const cloudVert = `varying vec2 vUV;void main(){vUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+
+const cloudFrag = NOISE_GLSL + `uniform float uTime,uSeed;varying vec2 vUV;
+  void main(){float N=fbmN(vec3(vUV*3.0+uSeed*.5,uTime*.03),4);
+    float c=smoothstep(.38,.6,N)*.7;gl_FragColor=vec4(1.,c);}`;
+
+// ── Ring ShaderMaterial (transparency gradient + self-shadowing) ──
+const ringVert = `varying vec2 vUV;void main(){vUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+
+const ringFrag = NOISE_GLSL + `uniform float uInnerR,uOuterR,uTime;varying vec2 vUV;
+  void main(){float r=mix(uInnerR,uOuterR,vUV.x);float sh=ringShadow(r,uInnerR,uOuterR);
+    float a=smoothstep(0.,.15,vUV.y)*smoothstep(1.,.85,vUV.y)*(0.4+.6*sin((vUV.x*3.+uTime*.02)*6.28));
+    vec3 col=mix(vec3(.7,.6,.4),vec3(.9,.8,.65),sh);gl_FragColor=vec4(col*a,a*.7);}`;
+
+// ── Shared materials (one per type, varied by uniforms) ──
+function makePlanetMat(type){return new THREE.ShaderMaterial({vertexShader:planetVert,fragmentShader:planetFrag,
+  uniforms:{uType:{value:type},uSeed:{value:0},uScale:{value:1.5},uTime:{value:0}}});}
+
+const planetMats=[makePlanetMat(0),makePlanetMat(1),makePlanetMat(2)]; // rocky,gas,ice
+const atmosMat=new THREE.ShaderMaterial({vertexShader:atmosVert,fragmentShader:atmosFrag,transparent:true,depthWrite:false,side:THREE.FrontSide});
+const cloudMat=new THREE.ShaderMaterial({vertexShader:cloudVert,fragmentShader:cloudFrag,
+  uniforms:{uTime:{value:0},uSeed:{value:0}},transparent:true,depthWrite:false});
+
+// ── Generate a full star system from seed (deterministic) ──
+function createStarSystem(worldPos,spectralClass){
+  const key=`${worldPos.x.toFixed(0)},${worldPos.y.toFixed(0)},${worldPos.z.toFixed(0)}`;
+  if(generatedSystems.has(key))return null;
+
+  // Re-seed from same chunk-hash so it's deterministic
+  const seed=hashCoords(Math.floor(worldPos.x/CHUNK_SIZE),Math.floor(worldPos.y/CHUNK_SIZE),
+                        Math.floor(worldPos.z/CHUNK_SIZE),'system_'+key);
+  const rng=mulberry3a(seed);
+
+  const group=new THREE.Group();group.position.copy(worldPos);
+  // Central star glow sphere (emissive)
+  const starGeo=new THREE.SphereGeometry(spectralClass.minSize+rng*(spectralClass.maxSize-spectralClass.minSize),16,12);
+  const starMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:spectralClass.color.clone().multiplyScalar(2.),emissiveIntensity:3.});
+  group.add(new THREE.Mesh(starGeo,starMat));
+
+  // Generate planets (3-8)
+  const planetCount=3+Math.floor(rng()*6);const planets=[];let ringDone=false;
+  for(let i=0;i<planetCount;i++){
+    const orbitR=(15+i*12)*(0.7+rng()*.6);// spread orbits out
+    let type=rng();type=type<.35?0:type<.75?1:2;// rocky/gas/ice weights
+    if(!ringDone&&i>=planetCount-2){type=1;} // force last gas giant to have rings
+
+    const radius=type===1?(2+rng()*4):(0.8+rng()*2);
+    const scaleF=.5+rng()*.5;const seedOff=rng()*1000;
+    const mat=planetMats[type].clone();mat.uniforms.uSeed.value=seedOff;mat.uniforms.uScale.value=(1+scaleF)*.3;
+
+    // Planet mesh
+    const pGroup=new THREE.Group();
+    const planetMesh=new THREE.Mesh(new THREE.SphereGeometry(radius,PLANET_DETAIL_SEGMENTS,24),mat);
+    pGroup.add(planetMesh);
+
+    // Atmosphere (slightly larger transparent sphere)
+    if(type!==0||rng()>.5){// rocky sometimes skip atmosphere
+      pGroup.add(new THREE.Mesh(new THREE.SphereGeometry(radius*1.12,24,18),atmosMat));
+    }
+
+    // Cloud layer on habitable-zone planets (type 0 at mid orbits)
+    if(type===0&&i>=1&&i<=planetCount-2){
+      const cloudMesh=new THREE.Mesh(new THREE.SphereGeometry(radius*1.06,28,20),cloudMat.clone());
+      cloudMat.uniforms.uSeed.value=seedOff+500; // reuse seed offset but different value
+      pGroup.add(cloudMesh);
+    }
+
+    // Rings on gas giants (at least one per system)
+    if(type===1&&(ringDone||rng()>.4)){
+      const innerR=radius*1.6,outerR=radius*(3+rng()*2);
+      const ringGeo=new THREE.PlaneGeometry(outerR-innerR,1,64,1);
+      // Remap UVs: x goes from 0→1 across the width (inner to outer)
+      const pos=ringGeo.attributes.position;const uv=ringGeo.attributes.uv;
+      for(let j=0;j<pos.count;j++){uv.setX(j,(pos.getX(j)+(outerR-innerR)/2)/(outerR-innerR));}
+
+      const ringMat=new THREE.ShaderMaterial({vertexShader:ringVert,fragmentShader:ringFrag,
+        uniforms:{uInnerR:{value:innerR},uOuterR:{value:outerR},uTime:{value:0}},
+        transparent:true,depthWrite:false,side:THREE.DoubleSide});
+      const ringMesh=new THREE.Mesh(ringGeo,ringMat);
+      ringMesh.rotation.x=-Math.PI/2; // lay flat on XZ plane
+      pGroup.add(ringMesh);
+
+      if(type===1)ringDone=true;// mark that we've done at least one ringed planet
+    }
+
+    // Moons (1-3 for major planets)
+    const moonCount=type===1?1+Math.floor(rng()*3):rng()>.7?1:0;
+    for(let m=0;m<moonCount;m++){
+      const mr=.2+rng()*.5;// small moons
+      const md=radius*(2.5+m*1.5);const ma=rng()*Math.PI*2;
+      // Simple gray procedural sphere (reuse rocky mat with different seed)
+      const moonMat=planetMats[0].clone();moonMat.uniforms.uSeed.value=seedOff+999+m;moonMat.uniforms.uScale.value=3.;
+      const moonMesh=new THREE.Mesh(new THREE.SphereGeometry(mr,12,8),moonMat);
+      pGroup.add(moonMesh);// store metadata for animation later
+
+      // Tag the mesh so animate loop can orbit it
+      moonMesh.userData={orbitRadius:md,angleOffset:ma,speed:.3+rng()*.5,parent:pGroup};
+    }
+
+    group.add(pGroup);
+    planets.push({group:pGroup,radius,mat,type,orbitR,seedOff});
+  }
+
+  // Asteroid belt between planet orbits (as Points)
+  if(planets.length>=3){
+    const idx=Math.floor(planets.length/2);
+    const innerOrbit=planets[idx].orbitR,outerOrbit=(idx+1<planets.length?planets[idx+1]:{orbitR:innerOrbit+30}).orbitR;
+    const beltCount=500;const aPos=new Float32Array(beltCount*3);
+    for(let i=0;i<beltCount;i++){
+      const r=(innerOrbit+.5*(outerOrbit-innerOrbit))*(.8+rng()*.4);// spread between orbits
+      const theta=rng()*Math.PI*2,phi=Math.acos(2*rng()-1);
+      aPos[i*3]=r*Math.sin(phi)*Math.cos(theta);aPos[i*3+1]=(rng()-.5)*2;aPos[i*3+2]=r*Math.sin(phi)*Math.sin(theta);
+    }
+    const ag=new THREE.BufferGeometry();ag.setAttribute('position',new THREE.BufferAttribute(aPos,3));
+    const am=new THREE.PointsMaterial({color:0x887766,size:.4,transparent:true,opacity:.5,depthWrite:false});
+    group.add(new THREE.Points(ag,am));
+  }
+
+  scene.add(group);generatedSystems.set(key,{group,planets,starMat,cloudMats:[],ringMats:[]});
+  // Collect all time-uniform materials for animation loop updates
+  const entry=generatedSystems.get(key);
+  planets.forEach(p=>{if(p.mat.uniforms&&p.mat.uniforms.uTime)entry.cloudMats.push(p.mat);});
+  group.traverse(c=>{if(c.material&&c.material.uniforms&&c.material.uniforms.uInnerR)entry.ringMats.push(c.material);
+    if(c.userData&&c.userData.orbitRadius){/* moons tracked by userData */}});
+  return entry;
+}
+
+// ── Lazy load / unload star systems based on camera proximity ──
+const generatedSystems=new Map();// key → {group,planets,...}
+
+function updateStarSystems(){
+  // Check all nearby instanced meshes for stars within SYSTEM_LOAD_RADIUS of camera
+  const toLoad=[];
+  const tmpMat4=new THREE.Matrix4();const tmpPos=new THREE.Vector3();
+  for(const[,chunkData]of activeChunks){
+    if(!chunkData.nearbyInstanced)continue;const im=chunkData.nearbyInstanced;
+    for(let i=0;i<im.count;i++){
+      im.getMatrixAt(i,tmpMat4);tmpPos.setFromMatrixPosition(tmpMat4);
+      const dist=camera.position.distanceTo(tmpPos);
+      if(dist<SYSTEM_LOAD_RADIUS){
+        const key=`${tmpPos.x.toFixed(0)},${tmpPos.y.toFixed(0)},${tmpPos.z.toFixed(0)}`;
+        if(!generatedSystems.has(key))toLoad.push({pos:tmpPos.clone(),key});
+      }
+    }
+  }
+
+  // Load new systems (limit per frame to avoid stuttering)
+  for(let i=0;i<Math.min(toLoad.length,3);i++){
+    const cls=SPECTRAL_CLASSES[Math.floor(Math.random()*SPECTRAL_CLASSES.length)];
+    createStarSystem(toLoad[i].pos,cls);
+  }
+
+  // Unload systems too far from camera (beyond SYSTEM_LOAD_RADIUS*2)
+  for(const[key,sys]of generatedSystems){
+    if(camera.position.distanceTo(sys.group.position)>SYSTEM_LOAD_RADIUS*3){
+      scene.remove(sys.group);generatedSystems.delete(key);
+      sys.planets.forEach(p=>p.mat.dispose());
+      sys.starMat&&sys.starMat.dispose();
+      sys.cloudMats.forEach(m=>m.dispose());sys.ringMats.forEach(m=>m.dispose());
+    }
+  }
+}
+
+// ── Animate orbits, clouds, rings each frame ──
+function animateSystems(dt){
+  for(const[,sys]of generatedSystems){
+    // Orbit planets around star (simple circular)
+    sys.planets.forEach((p,idx)=>{
+      const speed=.05/(idx+1);// inner planets faster
+      p.group.position.x=Math.cos(elapsedSeconds*speed)*p.orbitR;
+      p.group.position.z=Math.sin(elapsedSeconds*speed)*p.orbitR;
+
+      // Update time uniform on planet material for animated noise
+      if(p.mat.uniforms&&p.mat.uniforms.uTime)p.mat.uniforms.uTime.value=elapsedSeconds;
+
+      // Orbit moons around their parent planet group
+      p.group.traverse(c=>{if(c.userData&&c.userData.orbitRadius){
+        const ud=c.userData;const a=ud.angleOffset+elapsedSeconds*ud.speed;
+        c.position.x=Math.cos(a)*ud.orbitRadius;c.position.z=Math.sin(a)*ud.orbitRadius;}});
+
+      // Animate cloud layer children (they share the group's position)
+    });
+
+    // Update ring time uniforms
+    sys.ringMats.forEach(m=>{if(m.uniforms&&m.uniforms.uTime)m.uniforms.uTime.value=elapsedSeconds;});
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// Phase 4: Nebulae + Black Hole
+// ════════════════════════════════════════════════════════════
+
+const NEBULA_COUNT = 8;
+const NEBULA_LOAD_DIST = 4000.0;
+let nebulaGroup = null; // lazy-init group holding all nebulae meshes
+
+function createNebula(worldPos, radius) {
+// Nebula shader: FBM noise with purple/blue/pink gradients + additive blending
+const nebVert = `varying vec3 vWP,vNorm;void main(){vNorm=normalize(normalMatrix*normal);
+  vec4 wp=modelMatrix*vec4(position,1.);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}`;
+
+const nebFrag = NOISE_GLSL + `uniform float uTime,uSeed,uScale;varying vec3 vWP,vNorm;void main(){
+  float N0=fbmN((vWP+uSeed)*uScale,5);float N1=fbmN((vWP*2.+uSeed*7.)*uScale*.6,4);
+  float density=smoothstep(.3,.7,N0)*(0.5+.5*N1);
+  vec3 col=mix(vec3(.4,.2,.7),vec3(.8,.3,.9),N1);// purple→pink gradient
+  col+=mix(-.1,.2,N0-.5)*vec3(0.,.3,1.); // blue tint variation
+  float rim=pow(max(dot(normalize(vNorm),normalize(cameraPosition-vWP)),0.),1.5);
+  gl_FragColor=vec4(col*density*rim,density*.35);}`;
+
+const geo = new THREE.SphereGeometry(radius, 20, 16);
+const mat = new THREE.ShaderMaterial({ vertexShader: nebVert, fragmentShader: nebFrag,
+uniforms: { uTime: { value: 0 }, uSeed: { value: worldPos.x * 0.1 + worldPos.z * 0.07 },
+uScale: { value: 0.003 } }, side: THREE.DoubleSide, transparent: true, depthWrite: false,
+blending: THREE.AdditiveBlending });
+return new THREE.Mesh(geo, mat);
+}
+
+function generateNebulae() {
+nebulaGroup = new THREE.Group(); nebulaGroup.name = 'nebulae';
+const seedBase = hashCoords(0, 0, 0, 'nebula_seed'); const rng = mulberry3a(seedBase);
+for (let i = 0; i < NEBULA_COUNT; i++) {
+// Scatter at ±2500 units from center with some Y variation
+const angle = rng() * Math.PI * 2;
+const dist = 1500 + rng() * 2000;
+const pos = new THREE.Vector3(Math.cos(angle) * dist, (rng() - 0.5) * 800, Math.sin(angle) * dist);
+const radius = 400 + rng() * 600;
+nebulaGroup.add(createNebula(pos, radius));
+}
+scene.add(nebulaGroup);
+}
+
+function updateNebulae() {
+if (!nebulaGroup) generateNebulae(); // lazy init on first frame
+// Proximity cull: show/hide based on camera distance
+for (const child of nebulaGroup.children) {
+const dist = camera.position.distanceTo(child.position);
+child.visible = dist < NEBULA_LOAD_DIST;
+if (child.material.uniforms && child.material.uniforms.uTime) {
+child.material.uniforms.uTime.value = elapsedSeconds;
+}
+}
+// Fade based on distance for smoother pop-in
+for (const child of nebulaGroup.children) {
+if (!child.visible) continue;
+const dist = camera.position.distanceTo(child.position);
+const fadeFactor = 1.0 - THREE.MathUtils.smoothstep(dist, NEBULA_LOAD_DIST * 0.6, NEBULA_LOAD_DIST);
+child.material.opacity = Math.max(0, fadeFactor); // subtle distance fade
+}
+}
+
+// ── Black Hole ───────────────────────────────────────────────
+const BLACK_HOLE_POS = new THREE.Vector3(0, 0, 0);
+let blackHoleGroup = null;
+
+function createBlackHole() {
+blackHoleGroup = new THREE.Group(); blackHoleGroup.position.copy(BLACK_HOLE_POS);
+
+// Event horizon: pure black sphere
+const eventHorizon = new THREE.Mesh(
+new THREE.SphereGeometry(8.0, 32, 24),
+new THREE.MeshBasicMaterial({ color: 0x000000 })
+);
+blackHoleGroup.add(eventHorizon);
+
+// Accretion disc shader
+const accVert = `varying vec2 vUV;void main(){vUV=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`;
+const accFrag = NOISE_GLSL + `uniform float uTime,uInnerR,uOuterR;varying vec2 vUV;void main(){
+  // Remap UV to radial distance (0→1 from inner to outer edge)
+  float rDist=mix(uInnerR,uOuterR,vUV.x);float norm=(rDist-uInnerR)/(uOuterR-uInnerR);
+  // Hot inner ring: white-yellow; cool outer glow: orange-red
+  vec3 hot=vec3(1.,.95,.8),cool=vec3(.9,.2,0.);
+  vec3 col=mix(hot,cool,pow(norm,1.5));
+  // Animated noise for turbulence
+  float N=vnoise(vec3(vUV*4.+uTime*.1,uTime*.05))*0.5+0.5;col+=N*mix(.2,-.1,norm);
+  // Doppler brightening: approaching side brighter (left half of disc)
+  float doppler=smoothstep(0.,1.,vUV.y)*.3+.7;// simple approximation
+  col*=doppler;
+  // Radial falloff — fade at edges
+  float alpha=(1.-pow(norm,2.))*smoothstep(0.,.1,vUV.x)*smoothstep(1.,.85,vUV.x);
+  gl_FragColor=vec4(col*alpha,alpha*.9);} `;
+
+const accGeo = new THREE.RingGeometry(12, 45, 128, 1);
+// Remap UVs so x goes from inner→outer radius
+{ const pos = accGeo.attributes.position; const uv = accGeo.attributes.uv;
+for (let i = 0; i < pos.count; i++) {
+const px = pos.getX(i), pz = pos.getZ(i);
+const r = Math.sqrt(px * px + pz * pz);
+uv.setX(i, (r - 12) / (45 - 12)); // normalize to [0,1] from inner→outer
+} }
+
+const accMat = new THREE.ShaderMaterial({ vertexShader: accVert, fragmentShader: accFrag,
+uniforms: { uTime: { value: 0 }, uInnerR: { value: 12.0 }, uOuterR: { value: 45.0 } },
+side: THREE.DoubleSide, transparent: true, depthWrite: false });
+const accMesh = new THREE.Mesh(accGeo, accMat);
+accMesh.rotation.x = -Math.PI / 2; // lay flat on XZ plane
+blackHoleGroup.add(accMesh);
+
+// Gravitational lensing approximation — Fresnel chromatic aberration sphere
+const lensVert = `varying vec3 vNorm,vViewDir;void main(){vNorm=normalize(normalMatrix*normal);
+  vec4 wp=modelMatrix*vec4(position,1.);vViewDir=normalize(cameraPosition-wp.xyz);
+  gl_Position=projectionMatrix*viewMatrix*wp;}`;
+
+const lensFrag = `varying vec3 vNorm,vViewDir;void main(){
+  float rim=pow(1.-max(dot(vNorm,vViewDir),0.),2.5);// strong Fresnel at edges
+  // Chromatic aberration: shift RGB channels differently based on view angle
+  float r=rim*.8+sin(rim*3.)*.1;float g=rim*.6+cos(rim*4.)*.05;float b=rim+.2*sin(rim*5.);
+  gl_FragColor=vec4(vec3(r,g,b),rim*.4);}`;
+
+const lensMesh = new THREE.Mesh(
+new THREE.SphereGeometry(8.0 * 2.8, 32, 24), // ~2.8× event horizon radius
+new THREE.ShaderMaterial({ vertexShader: lensVert, fragmentShader: lensFrag,
+side: THREE.FrontSide, transparent: true, depthWrite: false })
+);
+blackHoleGroup.add(lensMesh);
+
+scene.add(blackHoleGroup);
+return blackHoleGroup;
+}
+
+function updateBlackHole() {
+if (!blackHoleGroup) return;
+// Update accretion disc time uniform and slow rotation
+for (const child of blackHoleGroup.children) {
+if (child.material.uniforms && child.material.uniforms.uTime) {
+child.material.uniforms.uTime.value = elapsedSeconds;
+}
+// Slowly rotate the accretion disc mesh around Y axis
+if (child.geometry && child.geometry.type === 'RingGeometry') {
+child.rotation.z += 0.001; // subtle orbital rotation effect
+}
+}
+}
+
+// ════════════════════════════════════════════════════════════
+// Phase 5: Weapon + Supernova Explosions + Audio Synthesis
+// ════════════════════════════════════════════════════════════
+
+const raycaster = new THREE.Raycaster();
+const _centerNDC = new THREE.Vector2(0, 0); // camera center for raycast
+
+// ── Explosion tracking arrays ───────────────────────────────
+const activeExplosions = []; // { type:'supernova'|'planet', group, startTime, duration, ... }
+
+// Shared audio context (created after first user interaction)
+let audioCtx = null;
+function ensureAudioContext() {
+if (!audioCtx) {
+audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+if (audioCtx.state === 'suspended') audioCtx.resume();
+return audioCtx;
+}
+
+// ── Synthesized explosion sounds via Web Audio API ───────────
+function playSupernovaSound() {
+const ctx = ensureAudioContext(); const now = ctx.currentTime;
+
+// Layer 1: White noise burst with lowpass filter sweep rumble (3s tail)
+const bufLen = Math.floor(ctx.sampleRate * 3);
+const noiseBuf = ctx.createBuffer(2, bufLen, ctx.sampleRate);
+for (let ch = 0; ch < 2; ch++) { const data = noiseBuf.getChannelData(ch);
+for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1; }
+
+const noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = noiseBuf;
+const lpFilter = ctx.createBiquadFilter(); lpFilter.type = 'lowpass';
+lpFilter.frequency.setValueAtTime(3000, now);
+lpFilter.frequency.exponentialRampToValueAtTime(80, now + 2.5);
+
+const noiseGain = ctx.createGain();
+noiseGain.gain.setValueAtTime(0.6, now);
+noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
+
+noiseSrc.connect(lpFilter).connect(noiseGain).connect(ctx.destination);
+noiseSrc.start(now); noiseSrc.stop(now + 3.0);
+
+// Layer 2: Oscillator impact thump for harmonic richness
+const osc = ctx.createOscillator(); osc.type = 'sine';
+osc.frequency.setValueAtTime(150, now);
+osc.frequency.exponentialRampToValueAtTime(40, now + 0.8);
+
+const oscGain = ctx.createGain();
+oscGain.gain.setValueAtTime(0.35, now);
+oscGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+osc.connect(oscGain).connect(ctx.destination);
+osc.start(now); osc.stop(now + 1.2);
+
+// Layer 3: Sub-bass rumble oscillator (very low)
+const subOsc = ctx.createOscillator(); subOsc.type = 'sine';
+subOsc.frequency.setValueAtTime(60, now);
+subOsc.frequency.exponentialRampToValueAtTime(25, now + 2.0);
+
+const subGain = ctx.createGain();
+subGain.gain.setValueAtTime(0.2, now);
+subGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+
+subOsc.connect(subGain).connect(ctx.destination);
+subOsc.start(now); subOsc.stop(now + 2.5);
+}
+
+function playPlanetExplosionSound() {
+const ctx = ensureAudioContext(); const now = ctx.currentTime;
+
+// Short noise burst with debris crackle effect
+const bufLen = Math.floor(ctx.sampleRate * 1.5);
+const noiseBuf = ctx.createBuffer(2, bufLen, ctx.sampleRate);
+for (let ch = 0; ch < 2; ch++) { const data = noiseBuf.getChannelData(ch);
+for (let i = 0; i < bufLen; i++) {
+// Crackle: mix white noise with random amplitude spikes
+data[i] = (Math.random() * 2 - 1) * (i % 80 < 5 ? 3 : 1); } }
+
+const noiseSrc = ctx.createBufferSource(); noiseSrc.buffer = noiseBuf;
+const lpFilter = ctx.createBiquadFilter(); lpFilter.type = 'lowpass';
+lpFilter.frequency.setValueAtTime(4000, now);
+lpFilter.frequency.exponentialRampToValueAtTime(200, now + 1.0);
+
+const noiseGain = ctx.createGain();
+noiseGain.gain.setValueAtTime(0.35, now);
+noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+noiseSrc.connect(lpFilter).connect(noiseGain).connect(ctx.destination);
+noiseSrc.start(now); noiseSrc.stop(now + 1.5);
+
+// Impact thump (shorter than supernova)
+const osc = ctx.createOscillator(); osc.type = 'triangle';
+osc.frequency.setValueAtTime(200, now);
+osc.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+
+const oscGain = ctx.createGain();
+oscGain.gain.setValueAtTime(0.3, now);
+oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+osc.connect(oscGain).connect(ctx.destination);
+osc.start(now); osc.stop(now + 0.5);
+}
+
+// ── Supernova visual effect (multi-stage) ───────────────────
+function createSupernovaEffect(worldPos) {
+const group = new THREE.Group(); group.position.copy(worldPos);
+
+// Stage 1: Initial flash — expanding white sphere that grows and fades over ~1s
+const flashGeo = new THREE.SphereGeometry(0.5, 24, 16);
+const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1 });
+group.add(new THREE.Mesh(flashGeo, flashMat));
+
+// Stage 2: Shockwave ring — torus expanding outward
+const shockGeo = new THREE.TorusGeometry(1.0, 0.3, 8, 48);
+const shockMat = new THREE.MeshBasicMaterial({ color: 0xffccaa, transparent: true, opacity: 0.9 });
+group.add(new THREE.Mesh(shockGeo, shockMat));
+
+// Stage 3: Particle debris cloud via Points with velocity + lifetime uniforms
+const particleCount = 800;
+const pPositions = new Float32Array(particleCount * 3); // all start at origin (local space)
+const pVelocities = new Float32Array(particleCount * 3);
+for (let i = 0; i < particleCount; i++) {
+pPositions[i*3] = 0; pPositions[i*3+1] = 0; pPositions[i*3+2] = 0;
+// Random velocity direction with varying speed
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.acos(2 * Math.random() - 1);
+const speed = 5 + Math.random() * 40; // spread from slow to fast debris
+pVelocities[i*3]     = speed * Math.sin(phi) * Math.cos(theta);
+pVelocities[i*3+1]   = speed * Math.sin(phi) * Math.sin(theta);
+pVelocities[i*3+2]   = speed * Math.cos(phi);
+}
+
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+
+// Custom shader for color shift: white → orange → red over lifetime
+const particleVertShader = `
+attribute vec3 aVelocity; // we'll update positions manually in JS and use uniform time
+uniform float uTime;
+uniform float uPixelRatio;
+varying float vLife;
+void main() {
+vLife = smoothstep(0.0, 4.0, uTime); // normalized lifetime [0..1] over ~4s
+vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+gl_PointSize = mix(6.0, 1.0, vLife) * uPixelRatio * (200.0 / -mvPos.z);
+gl_PointSize = max(gl_PointSize, 1.0);
+gl_Position = projectionMatrix * mvPos;
+}`;
+
+const particleFragShader = `
+varying float vLife;
+void main() {
+vec2 center = gl_PointCoord - 0.5;
+float dist = length(center);
+if (dist > 0.5) discard;
+// Color shift: white(1,1,1) → orange(1,.5,.1) → red(.8,.1,0.) over lifetime
+vec3 colWhite=vec3(1.,1.,1.),colOrange=vec3(1.,.45,.08),colRed=vec3(.7,.08,0.);
+float t=vLife;
+vec3 col=t<0.5?mix(colWhite,colOrange,t*2.):mix(colOrange,colRed,(t-0.5)*2.);
+float alpha=(1.-vLife)*(1.-smoothstep(0.,.5,dist));
+gl_FragColor=vec4(col,alpha);
+}`;
+
+const pMat = new THREE.ShaderMaterial({ vertexShader: particleVertShader, fragmentShader: particleFragShader,
+uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+
+const particles = new THREE.Points(pGeo, pMat);
+group.add(particles);
+
+scene.add(group);
+
+// Store explosion data for animation + cleanup
+return { type: 'supernova', group, startTime: elapsedSeconds, duration: 4.0, respawnTime: null, originalStarPos: worldPos.clone(),
+flashMesh: group.children[0], shockMesh: group.children[1], particlePoints: particles, pVelocities };
+}
+
+// ── Planet destruction effect (instanced debris + dust) ─────
+function createPlanetExplosionEffect(worldPos, planetRadius) {
+const group = new THREE.Group(); group.position.copy(worldPos);
+
+// ~200 instanced rock chunks flying outward
+const chunkCount = 200;
+const chunkGeo = new THREE.DodecahedronGeometry(1.0, 0); // low-poly rocks
+const chunkMat = new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.8 });
+
+// Use InstancedMesh for performance
+const instancedChunks = new THREE.InstancedMesh(chunkGeo, chunkMat, chunkCount);
+const dummy2 = new THREE.Object3D();
+const tempColor = new THREE.Color();
+const chunkVelocities = []; // store velocities per instance for animation
+
+for (let i = 0; i < chunkCount; i++) {
+// Start at explosion center with slight offset
+dummy2.position.set(0, 0, 0);
+const scale = planetRadius * (0.05 + Math.random() * 0.2); // small chunks relative to original planet
+dummy2.scale.set(scale, scale, scale);
+
+// Random rotation
+dummy2.rotation.set(Math.random()*Math.PI*2, Math.random()*Math.PI*2, Math.random()*Math.PI*2);
+dummy2.updateMatrix();
+instancedChunks.setMatrixAt(i, dummy2.matrix);
+
+// Velocity: outward from center with spread
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.acos(2 * Math.random() - 1);
+const speed = planetRadius * (3 + Math.random() * 8); // scale velocity by original size
+chunkVelocities.push({ x: speed*Math.sin(phi)*Math.cos(theta), y: speed*Math.sin(phi)*Math.sin(theta), z: speed*Math.cos(phi) });
+
+// Color variation for debris chunks
+tempColor.setHSL(0.07 + Math.random()*0.05, 0.2+Math.random()*0.3, 0.3+Math.random()*0.4);
+instancedChunks.setColorAt(i, tempColor.clone());
+}
+if (chunkVelocities.length) instancedChunks.instanceMatrix.needsUpdate = true;
+
+group.add(instancedChunks);
+
+// Dust particles via Points system fading over ~5 seconds
+const dustCount = 300;
+const dPositions = new Float32Array(dustCount * 3); // all start at origin (local space)
+const dVelocities = [];
+for (let i = 0; i < dustCount; i++) {
+dPositions[i*3] = 0; dPositions[i*3+1] = 0; dPositions[i*3+2] = 0;
+// Slower, more spread-out velocity for dust cloud effect
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.acos(2 * Math.random() - 1);
+const speed = planetRadius * (1 + Math.random() * 4); // slower than chunks
+dVelocities.push({ x: speed*Math.sin(phi)*Math.cos(theta), y: speed*Math.sin(phi)*Math.sin(theta), z: speed*Math.cos(phi) });
+}
+
+const dGeo = new THREE.BufferGeometry();
+dGeo.setAttribute('position', new THREE.BufferAttribute(dPositions, 3));
+
+// Dust shader with fade over time
+const dustVertShader = `uniform float uTime,uPixelRatio;varying float vLife;void main(){
+vLife=smoothstep(0.,5.,uTime);vec4 mvPos=modelViewMatrix*vec4(position,1.);
+gl_PointSize=mix(4.,0.5,vLife)*uPixelRatio*(200./-mvPos.z);gl_PointSize=max(gl_PointSize,.5);
+gl_Position=projectionMatrix*mvPos;}`;
+
+const dustFragShader = `varying float vLife;void main(){vec2 c=gl_PointCoord-.5;if(length(c)>.5)discard;
+float a=(1.-vLife)*(1.-smoothstep(0.,.5,length(c)));gl_FragColor=vec4(.7,.6,.5,a*.5);}`;
+
+const dMat = new THREE.ShaderMaterial({ vertexShader: dustVertShader, fragmentShader: dustFragShader,
+uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+transparent: true, depthWrite: false });
+
+const dustPoints = new THREE.Points(dGeo, dMat);
+group.add(dustPoints);
+
+scene.add(group);
+
+return { type: 'planet', group, startTime: elapsedSeconds, duration: 5.0,
+instancedChunks, chunkVelocities, dummy2: dummy2.clone(), tempColor: tempColor.clone(),
+dustPoints, dVelocities };
+}
+
+// ── Animate all active explosions each frame ────────────────
+function updateExplosions(dt) {
+const now = elapsedSeconds;
+for (let i = activeExplosions.length - 1; i >= 0; i--) {
+const exp = activeExplosions[i];
+const age = now - exp.startTime;
+
+if (exp.type === 'supernova') {
+// Flash: expand and fade over first ~1 second
+const flashT = Math.min(age / 1.0, 1.0); // normalized [0..1] over 1s
+const fMesh = exp.flashMesh;
+fMesh.scale.setScalar(1 + flashT * 30); // grow from radius 0.5 to ~15
+fMesh.material.opacity = Math.max(0, 1 - flashT * 1.2);
+
+// Shockwave: expand ring outward over ~2 seconds
+const shockT = Math.min(age / 2.0, 1.0);
+const sMesh = exp.shockMesh;
+sMesh.scale.setScalar(1 + shockT * 50); // grow torus radius dramatically
+sMesh.material.opacity = Math.max(0, (1 - shockT) * 0.9);
+
+// Particles: update positions based on velocity vectors
+const pGeo = exp.particlePoints.geometry;
+const posArr = pGeo.attributes.position.array;
+for (let j = 0; j < posArr.length / 3; j++) {
+posArr[j*3]     += exp.pVelocities[j*3] * dt;
+posArr[j*3+1]   += exp.pVelocities[j*3+1] * dt;
+posArr[j*3+2]   += exp.pVelocities[j*3+2] * dt;
+}
+pGeo.attributes.position.needsUpdate = true;
+
+// Update particle shader time uniform (clamped to duration)
+exp.particlePoints.material.uniforms.uTime.value = Math.min(age, 4.0);
+
+if (age >= exp.duration) {
+cleanupExplosion(exp);
+activeExplosions.splice(i, 1);
+}
+
+} else if (exp.type === 'planet') {
+// Update instanced chunk positions based on velocities
+const localDummy = new THREE.Object3D(); // local dummy for matrix updates
+for (let j = 0; j < exp.chunkVelocities.length; j++) {
+exp.instancedChunks.getMatrixAt(j, localDummy.matrix);
+localDummy.position.fromArray(localDummy.matrix.elements.slice(12, 15));
+
+// Move chunk by velocity * dt with slight drag
+const v = exp.chunkVelocities[j];
+localDummy.position.x += v.x * dt;
+localDummy.position.y += v.y * dt;
+localDummy.position.z += v.z * dt;
+
+// Apply simple gravity pull back toward center (very subtle)
+const distToCenter = localDummy.position.length();
+if (distToCenter > 0.1) {
+const gravPull = -0.5 / Math.max(distToCenter, 1); // weak inverse-distance gravity
+localDummy.position.x += v.x * gravPull * dt;
+localDummy.position.y += v.y * gravPull * dt;
+localDummy.position.z += v.z * gravPull * dt;
+}
+
+// Slow rotation for tumbling effect
+const rotSpeed = 0.5 + Math.random() * 2; // slight random spin per frame
+localDummy.rotation.x += rotSpeed * dt;
+localDummy.rotation.y += rotSpeed * 0.7 * dt;
+
+exp.instancedChunks.setMatrixAt(j, localDummy.matrix);
+}
+exp.instancedChunks.instanceMatrix.needsUpdate = true;
+
+// Fade chunks over time
+const fadeT = Math.min(age / exp.duration, 1.0);
+if (fadeT > 0.5) { // start fading halfway through
+for (let j = 0; j < exp.chunkVelocities.length; j++) {
+exp.tempColor.setRGB(0.4*(1-fadeT), 0.35*(1-fadeT), 0.3*(1-fadeT));
+exp.instancedChunks.setColorAt(j, exp.tempColor);
+}
+if (exp.instancedChunks.instanceColor) exp.instancedChunks.instanceColor.needsUpdate = true;
+}
+
+// Update dust particle positions
+const dPosArr = exp.dustPoints.geometry.attributes.position.array;
+for (let j = 0; j < dPosArr.length / 3; j++) {
+dPosArr[j*3]     += exp.dVelocities[j].x * dt;
+dPosArr[j*3+1]   += exp.dVelocities[j].y * dt;
+dPosArr[j*3+2]   += exp.dVelocities[j].z * dt;
+}
+exp.dustPoints.geometry.attributes.position.needsUpdate = true;
+
+// Update dust shader time uniform (clamped to duration)
+exp.dustPoints.material.uniforms.uTime.value = Math.min(age, 5.0);
+
+if (age >= exp.duration) {
+cleanupExplosion(exp);
+activeExplosions.splice(i, 1);
+}
+}
+}
+}
+
+function cleanupExplosion(exp) {
+scene.remove(exp.group);
+exp.group.traverse(child => {
+if (child.geometry) child.geometry.dispose();
+if (child.material) child.material.dispose();
+});
+// Dispose instanced mesh specifically if planet type
+if (exp.instancedChunks) { exp.instancedChunks.geometry.dispose(); }
+}
+
+// ── Fire weapon on click when pointer is locked ─────────────
+function fireWeapon() {
+raycaster.setFromCamera(_centerNDC, camera);
+
+// Collect all raycastable targets: nearby star instanced meshes + planet groups
+const targets = [];
+
+// Add nearby stars (instanced meshes from active chunks)
+for (const [, chunkData] of activeChunks) {
+if (chunkData.nearbyInstanced) targets.push(chunkData.nearbyInstanced);
+}
+
+// Add star system central stars and planets
+for (const [, sys] of generatedSystems) {
+sys.group.traverse(child => { if (child.isMesh && child.geometry.type === 'SphereGeometry') targets.push(child); });
+}
+
+// Raycast against all targets
+const intersects = raycaster.intersectObjects(targets, false);
+if (intersects.length > 0) {
+const hit = intersects[0];
+const hitPoint = hit.point;
+const hitObj = hit.object;
+
+// Determine if we hit a star or planet based on material emissive intensity
+const isStarHit = hitObj.material && hitObj.material.emissiveIntensity >= 2.5;
+
+if (isStarHit) {
+playSupernovaSound();
+activeExplosions.push(createSupernovaEffect(hitPoint));
+} else if (hitObj.geometry.type === 'SphereGeometry') {
+// Planet hit — get approximate radius from scale
+const planetRadius = hitObj.scale.x || 1.0; // rough estimate
+playPlanetExplosionSound();
+activeExplosions.push(createPlanetExplosionEffect(hitPoint, planetRadius));
+
+// Hide the original planet mesh temporarily (respawn after duration)
+hitObj.visible = false;
+setTimeout(() => { if (!hitObj.parent?.parent) hitObj.visible = true; }, 5000);
+}
+} else {
+// Miss — play a subtle laser whoosh sound
+playMissSound();
+}
+
+// Visual: brief muzzle flash at camera center (small bright sphere that fades instantly)
+const muzzleGeo = new THREE.SphereGeometry(0.1, 8, 6);
+const muzzleMat = new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 1 });
+const muzzleFlash = new THREE.Mesh(muzzleGeo, muzzleMat);
+
+// Position slightly in front of camera along forward direction
+const fwdDir = new THREE.Vector3(); camera.getWorldDirection(fwdDir);
+muzzleFlash.position.copy(camera.position).addScaledVector(fwdDir, -0.5); // local to scene
+scene.add(muzzleFlash);
+
+// Animate and remove muzzle flash after 100ms
+setTimeout(() => {
+if (muzzleMat.opacity > 0) {
+scene.remove(muzzleFlash);
+muzzleGeo.dispose(); muzzleMat.dispose();
+}
+}, 80);
+}
+
+function playMissSound() {
+const ctx = ensureAudioContext(); const now = ctx.currentTime;
+// Quick laser whoosh: high-frequency oscillator sweep down
+const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+osc.frequency.setValueAtTime(2000, now);
+osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+
+const gain = ctx.createGain();
+gain.gain.setValueAtTime(0.08, now);
+gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+osc.connect(gain).connect(ctx.destination);
+osc.start(now); osc.stop(now + 0.2);
+}
+
+// ─── Cinematic intro state ────────────────────────────────
+let cinematicActive = true; // start in cinematic mode — no flight until dismissed
+const introOverlayEl = document.getElementById('intro-overlay');
+const nearestBodyEl = document.getElementById('nearest-body');
+
+// Find the first ringed gas giant for the cinematic camera position
+function findCinematicTarget() {
+for (const [sysKey, sys] of generatedSystems) {
+if (!sys.planets || !Array.isArray(sys.planets)) continue;
+for (let i = 0; i < Math.min(3, sys.planets.length); i++) { // check first few planets
+const pDef = sys.planets[i];
+// Look for gas giant with rings — type >= 2 typically has rings in Phase 3 code
+if ((pDef.type === undefined || pDef.type >= 1) && (pDef.radius > 4)) return { system: sys, planetDef: pDef };
+}
+}
+return null; // fallback to any star system center
+}
+
+// Cinematic camera orbit state
+const cinematicTarget = findCinematicTarget();
+let cinematicStartTime = performance.now() / 1000;
+const CINEMATIC_ORBIT_RADIUS = 25;
+
+// Euler for mouse look (YXZ order, clamped pitch)
+const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+// Velocity vector and constants
+const velocity = new THREE.Vector3();
+const ACCELERATION = 40.0;       // m/s² for thrust keys
+const DAMPING = 2.5;             // friction coefficient (higher = faster stop)
+const BRAKE_DAMPING = 12.0;      // aggressive damping when space held
+
+// HUD / pointer-lock state variables
+let isLocked = false;
+const speedEl = document.getElementById('speed-readout');
+const crosshairEl = document.getElementById('crosshair');
+
+// Key state tracking
+const keyState = {};
+
+function onPointerLockChange() {
+isLocked = document.pointerLockElement === renderer.domElement;
+crosshairEl.style.display = isLocked ? 'block' : 'none';
+document.getElementById('instructions').style.opacity = isLocked ? '0.2' : '1';
+}
+document.addEventListener('pointerlockchange', onPointerLockChange);
+
+// Intro click → dismiss cinematic, init AudioContext, start flight
+introOverlayEl.addEventListener('click', () => {
+if (!cinematicActive) return;
+cinematicActive = false;
+
+// Init/resume AudioContext on first user gesture
+ensureAudioContext();
+
+// Fade out overlay
+introOverlayEl.classList.add('hidden');
+
+// Smooth camera transition: move to flight start position after fade
+setTimeout(() => {
+camera.position.set(0, 5, 30);
+velocity.set(0, 0, 0);
+euler.set(0, 0, 0);
+camera.quaternion.setFromEuler(euler);
+
+// Request pointer lock for flight mode
+renderer.domElement.requestPointerLock();
+}, 800);
+});
+
+renderer.domElement.addEventListener('click', () => {
+if (cinematicActive) return; // still in cinematic — ignore canvas clicks
+if (isLocked) fireWeapon();
+else renderer.domElement.requestPointerLock();
+});
+
+// Mouse movement → camera rotation via Euler YXZ
+const PI_2 = Math.PI / 2;
+document.addEventListener('mousemove', (e) => {
+if (!isLocked) return;
+const sensitivity = 0.002;
+euler.y -= e.movementX * sensitivity;
+euler.x -= e.movementY * sensitivity;
+// Clamp pitch to avoid gimbal lock (~±85°)
+euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
+camera.quaternion.setFromEuler(euler);
+});
+
+document.addEventListener('keydown', (e) => { keyState[e.code] = true; });
+document.addEventListener('keyup', (e) => { keyState[e.code] = false; });
+
+// ─── Update flight physics each frame ──────────────────────
+const _direction = new THREE.Vector3();
+const _forward = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+
+function updateFlight(delta) {
+if (!isLocked || delta <= 0) return;
+
+const dt = Math.min(delta, 0.1);
+
+// Camera axes (project forward onto horizontal plane for WASD strafe/forward feel)
+camera.getWorldDirection(_forward);
+_right.crossVectors(_forward, _up).normalize();
+
+// Recompute a "horizontal forward" that ignores pitch — so W always goes where you're pointing yaw-wise
+const horizontalForward = new THREE.Vector3(_forward.x, 0, _forward.z).normalize();
+const horizontalRight = new THREE.Vector3().crossVectors(horizontalForward, _up).normalize();
+
+// Build acceleration from key inputs
+_direction.set(0, 0, 0);
+
+if (keyState['KeyW']) _direction.add(horizontalForward);
+if (keyState['KeyS']) _direction.sub(horizontalForward);
+if (keyState['KeyA']) _direction.sub(horizontalRight);
+if (keyState['KeyD']) _direction.add(horizontalRight);
+
+// Up/down: Q/E or Shift/Ctrl
+if (keyState['KeyQ'] || keyState['ShiftLeft'] || keyState['ShiftRight']) _direction.y += 1;
+if (keyState['KeyE'] || keyState['ControlLeft'] || keyState['ControlRight']) _direction.y -= 1;
+
+_direction.normalize().multiplyScalar(ACCELERATION);
+
+// Apply acceleration to velocity
+velocity.addScaledVector(_direction, dt);
+
+// Roll: R/F rotates camera around forward axis via quaternion multiplication
+const rollSpeed = 2.0; // radians per second
+if (keyState['KeyR']) {
+const q = new THREE.Quaternion().setFromAxisAngle(_forward.clone(), -rollSpeed * dt);
+camera.quaternion.multiply(q);
+// Sync euler back from updated quaternion for mouse look continuity
+euler.setFromQuaternion(camera.quaternion, 'YXZ');
+}
+if (keyState['KeyF']) {
+const q = new THREE.Quaternion().setFromAxisAngle(_forward.clone(), rollSpeed * dt);
+camera.quaternion.multiply(q);
+euler.setFromQuaternion(camera.quaternion, 'YXZ');
+}
+
+// Damping / friction on velocity
+let currentDamping = keyState['Space'] ? BRAKE_DAMPING : DAMPING;
+velocity.multiplyScalar(Math.max(0, 1 - currentDamping * dt));
+
+// Integrate position
+camera.position.addScaledVector(velocity, dt);
+
+// Update speed readout
+const speed = velocity.length();
+speedEl.textContent = `Speed: ${speed.toFixed(1)} m/s`;
+}
+
+// ─── Animation loop ────────────────────────────────────────
+let prevTime = performance.now();
+let elapsedSeconds = 0; // accumulated time for shader uniforms
+
+function animate() {
+requestAnimationFrame(animate);
+const now = performance.now();
+const delta = (now - prevTime) / 1000; // seconds
+prevTime = now;
+
+// Clamp delta to avoid spiral-of-death on tab-switch
+const dt = Math.min(delta, 0.1);
+elapsedSeconds += dt;
+
+// Slice 2: Cinematic intro orbit (before flight takes over)
+if (cinematicActive) {
+const t = elapsedSeconds - cinematicStartTime;
+let sysPos = new THREE.Vector3(0, 0, 0); // fallback origin
+
+// Try to find a loaded system for the camera to orbit
+for (const [sysKey, sys] of generatedSystems) {
+if (!sys.group?.position) continue;
+sysPos.copy(sys.group.position);
+break;
+}
+
+const angleX = t * 0.15; // slow orbit around X axis
+const angleZ = t * 0.08; // slower drift on Z
+camera.position.set(
+sysPos.x + Math.cos(angleX) * CINEMATIC_ORBIT_RADIUS,
+sysPos.y + Math.sin(t * 0.12) * 5,
+sysPos.z + Math.sin(angleZ) * CINEMATIC_ORBIT_RADIUS
+);
+// Look at the system center
+camera.lookAt(sysPos.x, sysPos.y, sysPos.z);
+} else {
+updateFlight(dt);
+}
+
+// Update chunk streaming — load/unload based on camera position
+updateChunks();
+
+// Phase 3: lazy-load / unload star systems near camera, animate orbits & clouds
+updateStarSystems();
+animateSystems(dt);
+
+// Slice 1: HUD — find nearest body and display name/distance
+if (!cinematicActive) {
+let minDist = Infinity, nearestName = '';
+for (const [sysKey, sys] of generatedSystems) {
+const starPos = sys.group.position;
+const dToStar = camera.position.distanceTo(starPos);
+if (dToStar < minDist) { minDist = dToStar; nearestName = `Star ${sysKey}`; }
+for (let i = 0; i < Math.min(3, sys.planets?.length || 0); i++) {
+const pDef = sys.planets[i];
+if (!pDef.group) continue;
+// Compute planet world position from system group + planet local offset
+const planetWorldPos = new THREE.Vector3();
+pDef.group.getWorldPosition(planetWorldPos);
+const dToPlanet = camera.position.distanceTo(planetWorldPos);
+if (dToPlanet < minDist) { minDist = dToPlanet; nearestName = `Planet ${sysKey}-P${i}`; }
+}
+}
+nearestBodyEl.textContent = minDist < 500 ? `${nearestName} — ${minDist.toFixed(1)} ly` : '';
+} else {
+nearestBodyEl.textContent = ''; // hide during cinematic
+}
+
+// Phase 4: update nebulae proximity culling + time uniforms; black hole shader animation
+updateNebulae();
+if (!blackHoleGroup) { blackHoleGroup = createBlackHole(); } // lazy init on first frame
+updateBlackHole();
+
+// Phase 5: animate active explosions and clean up expired ones
+updateExplosions(dt);
+
+// Push time uniform to all active distant star materials and Milky Way
+for (const [, chunkData] of activeChunks) {
+if (chunkData.distantPoints && chunkData.distantPoints.material.uniforms) {
+chunkData.distantPoints.material.uniforms.uTime.value = elapsedSeconds;
+}
+}
+milkyWayMaterial.uniforms.uTime.value = elapsedSeconds;
+
+// Render via composer (includes bloom + output pass)
+composer.render();
+}
+
+// ─── Resize handler ────────────────────────────────────────
+window.addEventListener('resize', () => {
+const w = window.innerWidth, h = window.innerHeight;
+camera.aspect = w / h;
+camera.updateProjectionMatrix();
+renderer.setSize(w, h);
+composer.setSize(w, h);
+bloomPass.resolution.set(w, h);
+});
+
+// ─── Start ─────────────────────────────────────────────────
+animate();
+</script>
+</body>
+</html>
