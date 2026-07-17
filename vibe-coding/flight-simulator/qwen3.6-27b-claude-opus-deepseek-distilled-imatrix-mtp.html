@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta description="A vibe-coded flight simulator using qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp model.">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aerial Horizons — Atmospheric Flight Simulator</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+canvas { display: block; }
+
+#hud {
+  position: fixed; top: 12px; left: 12px; z-index: 10;
+  font-family: 'Courier New', monospace; font-size: 13px; color: #cfc;
+  background: rgba(0,0,0,0.45); padding: 8px 12px; border-radius: 6px;
+  pointer-events: none; line-height: 1.6; white-space: pre;
+}
+
+#title {
+  position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px;
+  background: linear-gradient(135deg, #0a0e1a 0%, #141c30 60%, #1a2744 100%);
+}
+#title h1 { font-family: 'Segoe UI', sans-serif; color: #dce8ff; font-size: 2.4rem; letter-spacing: 2px; }
+#title p { color: #8aa0c0; font-family: 'Courier New', monospace; font-size: 13px; max-width: 520px; text-align: center; line-height: 1.7; }
+#startBtn {
+  margin-top: 14px; padding: 12px 36px; border: 1px solid #4a6fa5; background: rgba(60,90,140,0.3);
+  color: #c8daf8; font-family: 'Segoe UI', sans-serif; font-size: 1rem; letter-spacing: 1px;
+  border-radius: 6px; cursor: pointer; transition: background 0.2s;
+}
+#startBtn:hover { background: rgba(70,110,170,0.5); }
+
+.controls-ref {
+  margin-top: 8px; padding: 10px 16px; border-radius: 4px;
+  font-family: 'Courier New', monospace; font-size: 12px; color: #9ab0d0;
+  background: rgba(30,50,80,0.3); line-height: 1.8; text-align: left;
+}
+</style>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="title">
+  <h1>AERIAL HORIZONS</h1>
+  <p>An atmospheric flight simulator — procedural terrain, smooth aircraft controls,<br/>and cinematic atmosphere in a single HTML file.</p>
+  <button id="startBtn">START FLIGHT</button>
+  <div class="controls-ref">
+    W / S &mdash; pitch down / up<br />
+    A / D &mdash; roll left / right (banks into turn)<br/>
+    Q / Space &mdash; yaw left / right<br/>
+    Shift — throttle boost · Ctrl — brake
+  </div>
+</div>
+
+<div id="hud"></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ──────────────────────────────────────────────
+// Simplex Noise (inline, ~200 lines)
+// Based on Stefan Gustavson / Jonas Wagner port
+// ──────────────────────────────────────────────
+class SimplexNoise {
+  constructor(seed = Math.random()) {
+    this.grad3 = [
+      [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+      [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
+      [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
+    ];
+    this.p = [];
+    for (let i = 0; i < 256; i++) this.p[i] = Math.floor(seed * 256 + i * 131.7) & 255;
+    this.perm = new Array(512);
+    for (let i = 0; i < 512; i++) this.perm[i] = this.p[i & 255];
+  }
+
+  dot(g, x, y) { return g[0]*x + g[1]*y; }
+
+  noise2D(xin, zin) {
+    const F2 = 0.5 * (Math.sqrt(3) - 1);
+    const G2 = (3 - Math.sqrt(3)) / 6;
+    let s = (xin + zin) * F2;
+    let i = Math.floor(xin + s);
+    let j = Math.floor(zin + s);
+    let t = (i + j) * G2;
+    let X0 = i - t, Z0 = j - t;
+    let x0 = xin - X0, z0 = zin - Z0;
+    let i1, j1;
+    if (x0 > z0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    let x1 = x0 - i1 + G2, z1 = z0 - j1 + G2;
+    let x2 = x0 - 1 + 2*G2, z2 = z0 - 1 + 2*G2;
+    let ii = i & 255, jj = j & 255;
+    let gi0 = this.perm[ii + this.perm[jj]] % 12;
+    let gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
+    let gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12;
+    let n0, n1, n2;
+    let t0 = 0.5 - x0*x0 - z0*z0;
+    n0 = t0 < 0 ? 0 : (t0 *= t0, t0 * t0 * this.dot(this.grad3[gi0], x0, z0));
+    let t1 = 0.5 - x1*x1 - z1*z1;
+    n1 = t1 < 0 ? 0 : (t1 *= t1, t1 * t1 * this.dot(this.grad3[gi1], x1, z1));
+    let t2 = 0.5 - x2*x2 - z2*z2;
+    n2 = t2 < 0 ? 0 : (t2 *= t2, t2 * t2 * this.dot(this.grad3[gi2], x2, z2));
+    return 70 * (n0 + n1 + n2);
+  }
+}
+
+// ──────────────────────────────────────────────
+// fBm wrapper — multi-octave fractal noise
+// ──────────────────────────────────────────────
+const simplex = new SimplexNoise(42); // fixed seed for reproducibility
+
+function fbm(x, z, octaves = 6) {
+  let value = 0, amplitude = 1, frequency = 1, maxValue = 0;
+  for (let i = 0; i < octaves; i++) {
+    value += simplex.noise2D(x * frequency, z * frequency) * amplitude;
+    maxValue += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
+  }
+  return value / maxValue; // ~[-1, 1]
+}
+
+// ──────────────────────────────────────────────
+// Terrain height at world (x, z)
+// ──────────────────────────────────────────────
+const TERRAIN_SCALE = 0.008;   // noise frequency — lower = larger features
+const TERRAIN_HEIGHT = 60;     // max peak height in units
+
+function getTerrainHeight(wx, wz) {
+  let h = fbm(wx * TERRAIN_SCALE, wz * TERRAIN_SCALE, 7);
+  // Raise peaks with a power curve for more dramatic mountains
+  if (h > 0.2) h = Math.pow(h, 1.3);
+  return h * TERRAIN_HEIGHT;
+}
+
+// ──────────────────────────────────────────────
+// Vertex color from elevation
+// ──────────────────────────────────────────────
+const COLORS = {
+  deepWater: new THREE.Color(0x2a5f8f),
+  shallowWater: new THREE.Color(0x3d8fbf),
+  sand: new THREE.Color(0xc2b280),
+  grassLow: new THREE.Color(0x4a7c3f),
+  grassHigh: new THREE.Color(0x5a9e4b),
+  forest: new THREE.Color(0x2d6b1e),
+  rock: new THREE.Color(0x8a7d6b),
+  snowLine: new THREE.Color(0xd8dce6),
+  peakWhite: new THREE.Color(0xf0f4fa)
+};
+
+function elevationColor(height, normalY) {
+  const c = new THREE.Color();
+  // Normalize height roughly to [0,1] for color blending
+  let t = (height + TERRAIN_HEIGHT * 0.3) / (TERRAIN_HEIGHT * 1.6);
+  t = Math.max(0, Math.min(1, t));
+
+  if (t < 0.15) c.copy(COLORS.deepWater).lerp(COLORS.shallowWater, t / 0.15);
+  else if (t < 0.2) c.copy(COLORS.sand);
+  else if (t < 0.35) c.copy(COLORS.grassLow).lerp(COLORS.grassHigh, (t - 0.2) / 0.15);
+  else if (t < 0.5) {
+    // Slope affects forest vs grass
+    const slopeFactor = Math.max(0, 1 - normalY * 3);
+    c.copy(COLORS.grassHigh).lerp(COLORS.forest, 0.6).lerp(COLORS.rock, slopeFactor * 0.5);
+  } else if (t < 0.7) {
+    const st = (t - 0.5) / 0.2;
+    c.copy(COLORS.rock).lerp(COLORS.snowLine, st);
+  } else {
+    const st = Math.min(1, (t - 0.7) / 0.3);
+    c.copy(COLORS.snowLine).lerp(COLORS.peakWhite, st);
+  }
+
+  // Flatten tops of peaks slightly for snow cap look
+  if (height > TERRAIN_HEIGHT * 0.65 && normalY < 0.7) {
+    const rockMix = Math.max(0, (0.7 - normalY) / 0.3);
+    c.lerp(COLORS.rock, rockMix * 0.4);
+  }
+
+  return c;
+}
+
+// ──────────────────────────────────────────────
+// Chunk configuration
+// ──────────────────────────────────────────────
+const CHUNK_SIZE = 80;          // world units per chunk
+const SEGMENTS = 64;            // geometry segments (vertices along each edge)
+const RENDER_RADIUS = 5;        // chunks radius to keep loaded
+const MAX_CHUNKS = (RENDER_RADIUS * 2 + 1) ** 2;
+
+// ──────────────────────────────────────────────
+// Chunk object pool & manager
+// ──────────────────────────────────────────────
+class TerrainManager {
+  constructor(scene) {
+    this.scene = scene;
+    this.activeChunks = new Map();   // "cx,cz" -> mesh
+    this.pool = [];                  // unused meshes ready for reuse
+    this.cameraPos = new THREE.Vector3(0, 80, 0);
+  }
+
+  _chunkKey(cx, cz) { return `${cx},${cz}`; }
+
+  _buildGeometry(cx, cz) {
+    const geo = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, SEGMENTS, SEGMENTS);
+    geo.rotateX(-Math.PI / 2); // lay flat on XZ plane
+
+    const posAttr = geo.attributes.position;
+    const colors = new Float32Array(posAttr.count * 3);
+
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vz = posAttr.getZ(i);
+
+      // World-space coordinates for noise input — ensures seamless edges
+      const wx = cx * CHUNK_SIZE + vx;
+      const wz = cz * CHUNK_SIZE + vz;
+
+      const h = getTerrainHeight(wx, wz);
+      posAttr.setY(i, h);
+
+      // Compute approximate normal from neighbors for slope-based coloring
+      let ny = 1.0; // default flat up
+      if (i > SEGMENTS && i < posAttr.count - SEGMENTS) {
+        const lh = getTerrainHeight(wx - CHUNK_SIZE / SEGMENTS, wz);
+        const rh = getTerrainHeight(wx + CHUNK_SIZE / SEGMENTS, vz);
+        const dx = 2 * (CHUNK_SIZE / SEGMENTS);
+        ny = Math.max(0, 1 - Math.abs(rh - lh) / dx * 3);
+      }
+
+      const col = elevationColor(h, ny);
+      colors[i * 3]     = col.r;
+      colors[i * 3 + 1] = col.g;
+      colors[i * 3 + 2] = col.b;
+    }
+
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+
+    return geo;
+  }
+
+  _getOrCreateMesh() {
+    if (this.pool.length > 0) {
+      const mesh = this.pool.pop();
+      // Reset position and visibility for reuse
+      mesh.visible = true;
+      return mesh;
+    }
+
+    const material = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      flatShading: false,
+      roughness: 0.85,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    // Use a minimal placeholder geometry; replaced with real chunk geo in _loadChunk
+    return new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+  }
+
+  update(cameraX, cameraZ) {
+    this.cameraPos.set(cameraX, 0, cameraZ);
+
+    const ccx = Math.round(cameraX / CHUNK_SIZE);
+    const ccz = Math.round(cameraZ / CHUNK_SIZE);
+
+    // Build set of needed chunk keys and load missing ones
+    const needed = new Set();
+    for (let dx = -RENDER_RADIUS; dx <= RENDER_RADIUS; dx++) {
+      for (let dz = -RENDER_RADIUS; dz <= RENDER_RADIUS; dz++) {
+        const cx = ccx + dx;
+        const cz = ccz + dz;
+
+        // Distance check — circular render radius
+        if (dx * dx + dz * dz > RENDER_RADIUS * RENDER_RADIUS) continue;
+
+        needed.add(this._chunkKey(cx, cz));
+        this._loadChunk(cx, cz);
+      }
+    }
+
+    // Unload chunks outside render distance
+    for (const [key, mesh] of this.activeChunks) {
+      if (!needed.has(key)) {
+        this.scene.remove(mesh);
+        mesh.visible = false;
+        mesh.geometry.dispose();
+        this.pool.push(mesh);
+        this.activeChunks.delete(key);
+      }
+    }
+
+    // Update positions of active chunks (in case camera moved and we want to verify)
+    for (const [key, mesh] of this.activeChunks) {
+      const [cxStr, czStr] = key.split(',');
+      const cx = parseInt(cxStr);
+      const cz = parseInt(czStr);
+      if (mesh.position.x !== cx * CHUNK_SIZE || mesh.position.z !== cz * CHUNK_SIZE) {
+        mesh.position.set(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE);
+      }
+    }
+
+    return this.activeChunks.size;
+  }
+
+  _loadChunk(cx, cz) {
+    const key = `${cx},${cz}`;
+    if (this.activeChunks.has(key)) return; // already loaded
+
+    const mesh = this._getOrCreateMesh();
+    const geo = this._buildGeometry(cx, cz);
+    mesh.geometry = geo;
+    mesh.position.set(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE);
+    mesh.receiveShadow = true;
+
+    this.scene.add(mesh);
+    this.activeChunks.set(key, mesh);
+  }
+}
+
+// ──────────────────────────────────────────────
+// Input handling — flight controls
+// W/S = pitch down/up, A/D = roll left/right (banks into turn), Q/Space = yaw, Shift = throttle boost, Ctrl = brake
+// ──────────────────────────────────────────────
+const keys = {};
+window.addEventListener('keydown', e => { keys[e.code] = true; });
+window.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+// ──────────────────────────────────────────────
+// Aircraft — mesh builder + flight physics
+// Simple lift/drag model tuned for relaxing cruise feel (NOT realistic aerodynamics)
+// ──────────────────────────────────────────────
+class Aircraft {
+  constructor(scene) {
+    this.scene = scene;
+
+    // Physics state
+    this.position = new THREE.Vector3(0, 120, 0);
+    this.quaternion = new THREE.Quaternion(); // starts identity (facing -Z)
+    this.velocity = new THREE.Vector3(0, 0, -40); // initial forward speed
+
+    // Control inputs (set each frame from keys)
+    this.inputPitch = 0;   // W/S: negative=pitch down, positive=pitch up
+    this.inputRoll = 0;    // A/D: negative=left roll, positive=right roll
+    this.inputYaw = 0;     // Q/Space: negative=yaw left, positive=yaw right
+
+    // Tuning constants — relaxing cruise feel
+    this.CRUISE_SPEED   = 50;       // target speed at neutral throttle
+    this.MAX_SPEED      = 100;
+    this.MIN_SPEED      = 20;
+    this.THROTTLE_BOOST = 60;       // extra speed when Shift held
+    this.BRAKE_FACTOR   = 30;       // speed reduction when Ctrl held
+
+    this.PITCH_RATE     = 1.8;      // rad/s max pitch rate
+    this.ROLL_RATE      = 2.5;      // rad/s max roll rate
+    this.YAW_RATE       = 1.2;      // rad/s max yaw rate (direct rudder)
+
+    this.ANGULAR_DAMPING = 3.0;     // how fast angular rates decay when input released
+    this.AUTO_LEVEL_ROLL = 1.5;     // auto-roll-back-to-level strength
+    this.LIFT_FACTOR    = 0.4;      // lift generated per unit speed (keeps plane aloft)
+
+    // Current angular velocities (rad/s) for damped response
+    this.angularVelPitch = 0;
+    this.angularVelRoll = 0;
+    this.angularVelYaw = 0;
+
+    this._buildMesh();
+    scene.add(this.mesh);
+  }
+
+  _buildMesh() {
+    const group = new THREE.Group();
+
+    // Materials
+    const bodyMat   = new THREE.MeshStandardMaterial({ color: 0xd4d8e0, roughness: 0.5, metalness: 0.2 });
+    const wingMat   = new THREE.MeshStandardMaterial({ color: 0xc0c8d4, roughness: 0.6, metalness: 0.1 });
+    const tailMat   = new THREE.MeshStandardMaterial({ color: 0xe05a3a, roughness: 0.5, metalness: 0.1 });
+    const glassMat  = new THREE.MeshStandardMaterial({ color: 0x8ac4e8, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.6 });
+
+    // Fuselage — main body (elongated box)
+    const fuselage = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 8), bodyMat);
+    group.add(fuselage);
+
+    // Nose cone — tapered front
+    const noseGeo = new THREE.CylinderGeometry(0.6, 0.3, 2.5, 8);
+    noseGeo.rotateX(Math.PI / 2);
+    const nose = new THREE.Mesh(noseGeo, bodyMat);
+    nose.position.z = -5;
+    group.add(nose);
+
+    // Cockpit glass — small box on top front
+    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 2), glassMat);
+    cockpit.position.set(0, 0.8, -2);
+    group.add(cockpit);
+
+    // Main wings — wide flat boxes
+    const wingGeo = new THREE.BoxGeometry(14, 0.25, 2.5);
+    const mainWing = new THREE.Mesh(wingGeo, wingMat);
+    mainWing.position.set(0, -0.1, 0.5);
+    group.add(mainWing);
+
+    // Wing struts (small supports)
+    for (let side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 4), bodyMat);
+      strut.position.set(side * 3, -0.5, 0.5);
+      group.add(strut);
+    }
+
+    // Horizontal stabilizer (tail wings)
+    const hStab = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 1.4), tailMat);
+    hStab.position.set(0, 0.3, 4.2);
+    group.add(hStab);
+
+    // Vertical stabilizer (tail fin)
+    const vStab = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.5, 1.8), tailMat);
+    vStab.position.set(0, 1.3, 4.2);
+    group.add(vStab);
+
+    // Propeller disc — spinning cylinder at nose tip (visual only)
+    this.propDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.8, 0.8, 0.05, 16),
+      new THREE.MeshStandardMaterial({ color: 0x4a4e58, roughness: 0.7, transparent: true, opacity: 0.3 })
+    );
+    this.propDisc.rotation.x = Math.PI / 2;
+    this.propDisc.position.z = -6.3;
+    group.add(this.propDisc);
+
+    // Propeller blades — two crossed boxes for visual spin effect
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0x5a5e68, roughness: 0.6 });
+    this.blade1 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.08, 0.2), bladeMat);
+    this.propDisc.add(this.blade1);
+    this.blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.2, 0.08), bladeMat);
+    this.propDisc.add(this.blade2);
+
+    // Scale the whole aircraft to world units (model is ~unit scale, multiply for scene)
+    group.scale.setScalar(1.5);
+
+    this.mesh = group;
+  }
+
+  update(dt) {
+    dt = Math.min(dt, 0.05); // clamp to avoid spiral on tab switch
+
+    // ── Read inputs from keys ──
+    const pitchInput = (keys['KeyW'] || keys['ArrowUp']) ? -1 : (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const rollInput  = (keys['KeyA'] || keys['ArrowLeft']) ? -1 : (keys['KeyD'] || keys['ArrowRight']) ? 1 : 0;
+    const yawInput   = (keys['KeyQ']) ? -1 : (keys['Space']) ? 1 : 0;
+
+    // Smooth input transitions (lerp toward target)
+    const inputSmooth = dt * 6;
+    this.inputPitch += (pitchInput - this.inputPitch) * Math.min(1, inputSmooth);
+    this.inputRoll  += (rollInput  - this.inputRoll)  * Math.min(1, inputSmooth);
+    this.inputYaw   += (yawInput   - this.inputYaw)   * Math.min(1, inputSmooth);
+
+    // ── Angular rates with damping ──
+    const targetPitchRate = this.inputPitch * this.PITCH_RATE;
+    const targetRollRate  = this.inputRoll  * this.ROLL_RATE;
+    const targetYawRate   = this.inputYaw   * this.YAW_RATE;
+
+    // Auto-level: when no roll input, gently return to wings level
+    let autoLevelTorque = 0;
+    if (Math.abs(this.inputRoll) < 0.1) {
+      // Extract current bank angle from quaternion
+      const euler = new THREE.Euler().setFromQuaternion(this.quaternion, 'YXZ');
+      autoLevelTorque = -euler.z * this.AUTO_LEVEL_ROLL;
+    }
+
+    // Integrate angular velocities with damping toward target
+    this.angularVelPitch += (targetPitchRate - this.angularVelPitch) * Math.min(1, dt * this.ANGULAR_DAMPING);
+    this.angularVelRoll  += ((targetRollRate + autoLevelTorque) - this.angularVelRoll) * Math.min(1, dt * this.ANGULAR_DAMPING);
+    this.angularVelYaw   += (targetYawRate - this.angularVelYaw) * Math.min(1, dt * this.ANGULAR_DAMPING);
+
+    // ── Apply rotation to orientation quaternion ──
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.angularVelPitch * dt);
+    const qRoll  = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -this.angularVelRoll * dt * 0.5); // roll slightly less responsive for stability
+    const qYaw   = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.angularVelYaw * dt);
+
+    this.quaternion.premultiply(qPitch).premultiply(qRoll).premultiply(qYaw);
+    this.quaternion.normalize();
+
+    // ── Banking induces yaw (natural turn feel) ──
+    const eulerForBank = new THREE.Euler().setFromQuaternion(this.quaternion, 'YXZ');
+    const bankTurnRate = -eulerForBank.z * 0.6; // roll angle → additional yaw rate
+    if (Math.abs(bankTurnRate) > 0.01) {
+      const qBankYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), bankTurnRate * dt);
+      this.quaternion.premultiply(qBankYaw);
+    }
+
+    // ── Speed management (simple throttle model) ──
+    let targetSpeed = this.CRUISE_SPEED;
+    if (keys['ShiftLeft'] || keys['ShiftRight']) {
+      targetSpeed += this.THROTTLE_BOOST;
+    }
+    if (keys['ControlLeft'] || keys['ControlRight']) {
+      targetSpeed -= this.BRAKE_FACTOR;
+    }
+    targetSpeed = Math.max(this.MIN_SPEED, Math.min(this.MAX_SPEED, targetSpeed));
+
+    // Current forward speed along aircraft's local -Z axis
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.quaternion);
+    let currentSpeed = this.velocity.dot(forward);
+
+    // Lerp toward target speed (throttle response)
+    const throttleSmooth = dt * 2;
+    currentSpeed += (targetSpeed - currentSpeed) * Math.min(1, throttleSmooth);
+
+    // ── Lift model: velocity vector pulled upward based on pitch + airspeed ──
+    // Simple lift: the faster you go and the more nose-up, the more climb
+    const liftDir = new THREE.Vector3(0, 1, 0).applyQuaternion(this.quaternion);
+    const liftStrength = currentSpeed * this.LIFT_FACTOR;
+
+    // Gravity-like downward pull (keeps plane from floating away)
+    const gravityPull = -25;
+
+    // Combine: forward thrust + lift component + gravity
+    const newVelocity = forward.clone().multiplyScalar(currentSpeed);
+    newVelocity.add(liftDir.multiplyScalar(liftStrength * 0.1)); // gentle climb tendency when pitched up
+    newVelocity.y += (eulerForBank.x * currentSpeed - this.velocity.y) * dt * 2; // pitch affects vertical speed
+
+    // Smooth velocity transition
+    this.velocity.lerp(newVelocity, Math.min(1, dt * 3));
+
+    // ── Integrate position ──
+    this.position.add(this.velocity.clone().multiplyScalar(dt));
+
+    // ── Terrain collision: don't go below ground + buffer ──
+    const groundH = getTerrainHeight(this.position.x, this.position.z);
+    if (this.position.y < groundH + 8) {
+      this.position.y = groundH + 8;
+      // Push nose up slightly on proximity to prevent nosedive into terrain
+      if (eulerForBank.x > -0.2) {
+        const qPushUp = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dt * 2);
+        this.quaternion.premultiply(qPushUp);
+      }
+    }
+
+    // ── Update mesh transform ──
+    this.mesh.position.copy(this.position);
+    this.mesh.quaternion.copy(this.quaternion);
+
+    // Spin propeller blades for visual effect
+    const spinSpeed = currentSpeed * 0.8;
+    this.blade1.rotation.z += spinSpeed * dt;
+    this.blade2.rotation.z += spinSpeed * dt;
+
+    return { speed: currentSpeed, altitude: this.position.y - groundH };
+  }
+}
+
+// ──────────────────────────────────────────────
+// Scene setup
+// ──────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+
+// ── Sun direction (used by sky shader + lighting) ──
+const sunDirection = new THREE.Vector3(0.6, 0.28, -0.7).normalize(); // low golden-hour angle
+
+// ──────────────────────────────────────────────
+// Atmospheric Sky Dome — inverted sphere with custom gradient + sun disc/glow shader
+// Golden-hour tones: deep warm blue zenith → pale amber horizon + glowing sun
+// ──────────────────────────────────────────────
+const skyVertexShader = `
+  varying vec3 vWorldDir;
+  void main() {
+    // Direction from camera to this vertex (in world space)
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldDir = normalize(worldPos.xyz - cameraPosition);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const skyFragmentShader = `
+  uniform vec3 uSunDirection;
+  varying vec3 vWorldDir;
+
+  void main() {
+    // Elevation: how far above horizon (y component of view direction)
+    float elevation = normalize(vWorldDir).y;
+
+    // Zenith color — deep warm blue
+    vec3 zenithColor = vec3(0.18, 0.25, 0.48);
+    // Horizon color — pale golden amber (golden hour feel)
+    vec3 horizonColor = vec3(0.92, 0.76, 0.52);
+
+    // Height-based gradient: pow gives smooth falloff toward zenith
+    float t = max(elevation, 0.0);
+    vec3 skyColor = mix(horizonColor, zenithColor, pow(t, 0.45));
+
+    // Below horizon — darken slightly (ground haze)
+    if (elevation < 0.0) {
+      vec3 belowHorizon = mix(horizonColor * 0.85, horizonColor * 0.6, min(-elevation * 3.0, 1.0));
+      skyColor = mix(skyColor, belowHorizon, min(-elevation * 2.0, 1.0));
+    }
+
+    // Sun disc — bright point using sharp dot product falloff
+    vec3 viewDir = normalize(vWorldDir);
+    float sunDot = max(dot(viewDir, uSunDirection), 0.0);
+
+    // Core sun disc (very tight)
+    skyColor += vec3(1.0, 0.95, 0.82) * pow(sunDot, 256.0) * 3.0;
+    // Inner glow
+    skyColor += vec3(1.0, 0.88, 0.6) * pow(sunDot, 32.0) * 0.45;
+    // Outer warm halo
+    skyColor += vec3(0.95, 0.7, 0.4) * pow(sunDot, 4.0) * 0.18;
+
+    gl_FragColor = vec4(skyColor, 1.0);
+  }
+`;
+
+const SKY_RADIUS = 5000;
+const skyDome = new THREE.Mesh(
+  new THREE.SphereGeometry(SKY_RADIUS, 32, 32),
+  new THREE.ShaderMaterial({
+    vertexShader: skyVertexShader,
+    fragmentShader: skyFragmentShader,
+    uniforms: { uSunDirection: { value: sunDirection } },
+    side: THREE.BackSide,
+    depthWrite: false
+  })
+);
+scene.add(skyDome);
+
+// ── Distance fog — matches sky horizon color for seamless blend ──
+scene.fog = new THREE.FogExp2(0xeca846, 0.0012);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 1, SKY_RADIUS * 1.1);
+camera.position.set(0, 90, 0);
+camera.lookAt(0, 20, -100);
+
+// ──────────────────────────────────────────────
+// Lighting — warm golden-hour sun + hemisphere ambient fill + subtle base light
+// ──────────────────────────────────────────────
+
+// Warm directional sunlight from the same direction as sky shader's sun
+const sunLight = new THREE.DirectionalLight(0xffe8c4, 1.6);
+sunLight.position.copy(sunDirection.clone().multiplyScalar(500));
+scene.add(sunLight);
+
+// Hemisphere light: warm blue sky top / earthy green ground bounce for ambient fill
+const hemiLight = new THREE.HemisphereLight(0x8ec5f0, 0x4a6b3a, 0.6);
+scene.add(hemiLight);
+
+// Subtle base ambient illumination to prevent deep shadows from going black
+const ambientBase = new THREE.AmbientLight(0xc8d8e8, 0.25);
+scene.add(ambientBase);
+
+// Warm fill light from opposite side for softer contrast
+const fillLight = new THREE.DirectionalLight(0xffc87a, 0.35);
+fillLight.position.set(-sunDirection.x * 300, sunDirection.y * 200 + 100, -sunDirection.z * 300);
+scene.add(fillLight);
+
+// ──────────────────────────────────────────────
+// Cloud Layers — ~300 billboard sprites with radial-gradient texture, noise-driven placement, wind drift
+// ──────────────────────────────────────────────
+
+// Generate cloud sprite texture on canvas: white center fading to transparent edge
+function createCloudTexture() {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Radial gradient: soft white center → transparent edge
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+  gradient.addColorStop(0.15, 'rgba(255, 255, 255, 0.85)');
+  gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.45)');
+  gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.12)');
+  gradient.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const cloudSpriteMaterial = new THREE.SpriteMaterial({
+  map: createCloudTexture(),
+  transparent: true,
+  opacity: 0.72,
+  depthWrite: false,
+  fog: true // clouds blend into distance fog
+});
+
+// Cloud layer config
+const CLOUD_COUNT = 300;
+const CLOUD_ALTITUDE_LOW = 150;   // lower cloud deck
+const CLOUD_ALTITUDE_HIGH = 280;  // upper cloud deck
+const CLOUD_SPREAD = 4000;        // horizontal spread around aircraft spawn
+const WIND_SPEED_X = 3.5;         // units/sec drift in X
+const WIND_SPEED_Z = -1.8;        // units/sec drift in Z (slight diagonal wind)
+
+// Place clouds where simplex noise value is high — creates natural clusters
+function placeClouds() {
+  const cloudSprites = [];
+  let placed = 0;
+  let attempts = 0;
+
+  while (placed < CLOUD_COUNT && attempts < CLOUD_COUNT * 10) {
+    attempts++;
+
+    // Random position within spread area
+    const cx = (Math.random() - 0.5) * CLOUD_SPREAD;
+    const cz = (Math.random() - 0.5) * CLOUD_SPREAD;
+
+    // Use simplex noise to determine if this is a "cloudy" spot — place where value > threshold
+    const noiseVal = simplex.noise2D(cx * 0.001, cz * 0.001);
+
+    // Accept placement with probability proportional to noise (higher noise = more likely)
+    // Threshold around -0.3 means we accept ~65% of attempts in good areas
+    if (noiseVal < -0.2 + Math.random() * 0.4) continue;
+
+    // Choose altitude layer based on a second noise sample — creates layered effect
+    const altNoise = simplex.noise2D(cx * 0.003 + 100, cz * 0.003 + 100);
+    const altitude = CLOUD_ALTITUDE_LOW + (CLOUD_ALTITUDE_HIGH - CLOUD_ALTITUDE_LOW) * ((altNoise + 1) / 2);
+
+    // Scale varies with noise — denser spots get bigger clouds
+    const scaleNoise = simplex.noise2D(cx * 0.005, cz * 0.005);
+    const baseScale = 40 + (scaleNoise + 1) * 30; // range ~40-100
+
+    const sprite = new THREE.Sprite(cloudSpriteMaterial.clone());
+    sprite.position.set(cx, altitude, cz);
+    sprite.scale.set(baseScale, baseScale, 1);
+
+    // Slight opacity variation per cloud for depth
+    sprite.material.opacity = 0.5 + (noiseVal * 0.3);
+
+    scene.add(sprite);
+    cloudSprites.push({ mesh: sprite, baseX: cx, baseZ: cz });
+    placed++;
+  }
+
+  return cloudSprites;
+}
+
+const clouds = placeClouds();
+
+// ──────────────────────────────────────────────
+// Terrain manager
+
+// ──────────────────────────────────────────────
+// Terrain manager
+// ──────────────────────────────────────────────
+const terrain = new TerrainManager(scene);
+
+// Initial chunk load around spawn point
+terrain.update(0, 0);
+
+// ──────────────────────────────────────────────
+// Aircraft instance
+// ──────────────────────────────────────────────
+const aircraft = new Aircraft(scene);
+
+// ──────────────────────────────────────────────
+// Smooth follow camera — tracks behind/above aircraft with damping
+// ──────────────────────────────────────────────
+const FOLLOW_DISTANCE  = 35;   // units behind aircraft
+const FOLLOW_HEIGHT    = 14;   // units above aircraft
+const BANK_OFFSET      = 8;    // lateral offset per radian of bank angle
+const CAMERA_LERP_RATE = 0.04; // damping factor — lower = smoother/slower follow
+
+// ──────────────────────────────────────────────
+// Game loop
+// ──────────────────────────────────────────────
+let gameStarted = false;
+let lastTime = performance.now();
+let frameCount = 0;
+let fpsDisplay = '---';
+const hudEl = document.getElementById('hud');
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  // Clamp delta to avoid huge jumps on tab switch
+  if (dt > 0.1) dt = 0.016;
+
+  frameCount++;
+  if (frameCount % 30 === 0) {
+    fpsDisplay = Math.round(1 / dt);
+  }
+
+if (!gameStarted) {
+    // Idle camera orbit for title screen preview — circle around aircraft spawn
+    const t = now * 0.0003;
+    camera.position.x = Math.sin(t) * 60 + aircraft.position.x;
+    camera.position.z = -Math.cos(t) * 80 + 40 + aircraft.position.z;
+    camera.position.y = aircraft.position.y + 25;
+    camera.lookAt(aircraft.position);
+
+    // Sky dome follows camera even during idle orbit
+    skyDome.position.copy(camera.position);
+
+    // Clouds still drift on title screen for atmosphere
+    for (let i = 0; i < clouds.length; i++) {
+      const c = clouds[i];
+      c.mesh.position.x += WIND_SPEED_X * dt;
+      c.mesh.position.z += WIND_SPEED_Z * dt;
+      if (c.mesh.position.x > CLOUD_SPREAD / 2)   c.mesh.position.x -= CLOUD_SPREAD;
+      if (c.mesh.position.x < -CLOUD_SPREAD / 2)  c.mesh.position.x += CLOUD_SPREAD;
+      if (c.mesh.position.z > CLOUD_SPREAD / 2)   c.mesh.position.z -= CLOUD_SPREAD;
+      if (c.mesh.position.z < -CLOUD_SPREAD / 2)  c.mesh.position.z += CLOUD_SPREAD;
+    }
+
+    // Update terrain around idle position and spin propeller slowly
+    const chunkCount = terrain.update(camera.position.x, camera.position.z);
+    if (frameCount % 3 === 0) {
+      hudEl.textContent = `Chunks: ${chunkCount} | Press START FLIGHT to begin`;
+    }
+
+    renderer.render(scene, camera);
+    return;
+  }
+
+  // ── Update aircraft physics ──
+  const flightData = aircraft.update(dt);
+
+  // ── Smooth follow camera ──
+  // Compute ideal camera position: behind and above aircraft based on its heading + bank offset
+  const acPos = aircraft.position;
+  const acQuat = aircraft.quaternion;
+
+  // Extract current euler for bank-angle lateral offset
+  const tmpEuler = new THREE.Euler().setFromQuaternion(acQuat, 'YXZ');
+  const bankAngle = tmpEuler.z; // roll angle in radians
+
+  // Aircraft forward direction (local -Z)
+  const acForward = new THREE.Vector3(0, 0, -1).applyQuaternion(acQuat);
+  // Aircraft right vector (local +X) — for bank offset
+  const acRight   = new THREE.Vector3(1, 0, 0).applyQuaternion(acQuat);
+
+  // Ideal camera position: behind aircraft by FOLLOW_DISTANCE, above by FOLLOW_HEIGHT, shifted laterally by bank
+  const idealCamPos = new THREE.Vector3()
+    .copy(acPos)
+    .addScaledVector(acForward, -FOLLOW_DISTANCE);   // step back along heading
+  idealCamPos.y += FOLLOW_HEIGHT;                    // rise above aircraft
+  // Add lateral offset proportional to bank angle (camera swings with the turn)
+  idealCamPos.addScaledVector(acRight, -bankAngle * BANK_OFFSET);
+
+  // Lerp current camera position toward ideal target each frame
+  const lerpFactor = Math.min(1, CAMERA_LERP_RATE + dt * 0.5);
+  camera.position.lerp(idealCamPos, lerpFactor);
+
+// Look at a point slightly ahead of the aircraft (not directly at it — gives cinematic feel)
+  const lookAhead = acPos.clone().addScaledVector(acForward, -12);
+  lookAhead.y += 2;
+
+  // Smoothly interpolate the look-at target too (avoids jitter on sharp turns)
+  if (!window._prevLookAt) window._prevLookAt = acPos.clone().addScaledVector(acForward, -10);
+  window._prevLookAt.lerp(lookAhead, lerpFactor * 1.5); // look-target catches up slightly faster
+  camera.lookAt(window._prevLookAt);
+
+  // ── Sky dome follows camera so it always surrounds the viewer ──
+  skyDome.position.set(camera.position.x, camera.position.y, camera.position.z);
+
+  // ── Animate clouds drifting with wind each frame ──
+  for (let i = 0; i < clouds.length; i++) {
+    const c = clouds[i];
+      c.mesh.position.x += WIND_SPEED_X * dt;
+      c.mesh.position.z += WIND_SPEED_Z * dt;
+    if (c.mesh.position.x < -CLOUD_SPREAD / 2)  c.mesh.position.x += CLOUD_SPREAD;
+    if (c.mesh.position.z > CLOUD_SPREAD / 2)   c.mesh.position.z -= CLOUD_SPREAD;
+    if (c.mesh.position.z < -CLOUD_SPREAD / 2)  c.mesh.position.z += CLOUD_SPREAD;
+  }
+
+  // ── Update terrain chunks around aircraft (not camera) ──
+  const chunkCount = terrain.update(acPos.x, acPos.z);
+
+  // HUD update (throttled to every 10 frames)
+  if (frameCount % 10 === 0) {
+    hudEl.textContent = [
+      `FPS: ${fpsDisplay}`,
+      `Chunks loaded: ${chunkCount} / max ~${MAX_CHUNKS}`,
+      `Position: (${acPos.x.toFixed(0)}, ${acPos.y.toFixed(0)}, ${acPos.z.toFixed(0)})`,
+      `Altitude AGL: ${(flightData.altitude).toFixed(1)}m  |  Speed: ${(flightData.speed * 3.6).toFixed(0)} km/h`
+    ].join('\n');
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ──────────────────────────────────────────────
+// Window resize handler
+// ──────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ──────────────────────────────────────────────
+// Start button — dismiss title screen
+// ──────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('title').style.display = 'none';
+  gameStarted = true;
+});
+
+// ──────────────────────────────────────────────
+// Start the loop
+// ──────────────────────────────────────────────
+animate();
+
+</script>
+</body>
+</html>

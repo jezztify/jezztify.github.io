@@ -17,3 +17,5 @@ The homepage is generated from project folders so the collection grows automatic
 ```
 
 An image placed directly in the folder (`jpg`, `jpeg`, `png`, `gif`, `webp`, or `avif`) is used as the card preview. Run `npm run build` to update the homepage locally. The GitHub Actions workflow rebuilds and commits the homepage whenever changes land on `main`.
+
+The homepage search indexes project paths, filenames, and text in HTML, JavaScript, CSS, JSON, Markdown, SVG, XML, and text files. Results update after two seconds without typing.
