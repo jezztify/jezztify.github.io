@@ -5,7 +5,7 @@ The homepage is generated from project folders so the collection grows automatic
 ## Add a project
 
 1. Create a working folder under a category, for example `vibe-coding/space/Qwen-asteroids/`. Cards show `VIBE CODING / SPACE` as the eyebrow and `Qwen Asteroids` as the heading.
-2. Put any `.html` file and its supporting files inside the working folder. The generator recursively scans all folders, so apps can have multiple HTML, JavaScript, CSS, and asset files. If a folder has `index.html`, it is preferred; otherwise the first HTML file is used as the preview and link.
+2. Put one or more `.html` files and their supporting files inside the working folder. The generator recursively scans all folders and creates one card per HTML file, so sibling apps such as `flight-simulator/qwen3.6-27b-mtp.html` and `flight-simulator/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html` are shown separately.
 3. Optionally add a `project.json` file:
 
 ```json
@@ -18,4 +18,4 @@ The homepage is generated from project folders so the collection grows automatic
 
 An image placed directly in the folder (`jpg`, `jpeg`, `png`, `gif`, `webp`, or `avif`) is used as the card preview. Run `npm run build` to update the homepage locally. The GitHub Actions workflow rebuilds and commits the homepage whenever changes land on `main`.
 
-The homepage search indexes project paths, filenames, and text in HTML, JavaScript, CSS, JSON, Markdown, SVG, XML, and text files. Results update after two seconds without typing.
+The homepage search indexes project paths, filenames, and text in HTML, JavaScript, CSS, JSON, Markdown, SVG, XML, and text files. Results update after one second without typing.

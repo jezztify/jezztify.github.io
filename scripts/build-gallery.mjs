@@ -71,26 +71,25 @@ async function getProjects(folder = root) {
     const htmlFiles = files
       .filter((file) => file.isFile() && /\.html?$/i.test(file.name))
       .sort((a, b) => a.name.localeCompare(b.name));
-    const htmlFile = htmlFiles.find((file) => file.name.toLowerCase() === 'index.html') || htmlFiles[0];
 
-    if (htmlFile) {
-      const html = await readFile(path.join(projectFolder, htmlFile.name), 'utf8');
+    if (htmlFiles.length) {
       const image = files.find((file) => file.isFile() && /\.(avif|gif|jpe?g|png|webp)$/i.test(file.name));
       const pathParts = relativeFolder.split('/');
       const collectionName = pathParts[0];
       const categoryName = pathParts[1] || pathParts[0];
-      const workingFolderName = pathParts.length > 2 ? path.basename(projectFolder) : null;
-      projects.push({
-        slug: relativeFolder,
-        entry: htmlFile.name,
-        title: workingFolderName
-          ? titleFromSlug(workingFolderName)
-          : titleFromSlug(path.basename(htmlFile.name, path.extname(htmlFile.name))),
-        description: metadata.description || descriptionFromHtml(html) || 'A small work in progress.',
-        category: `${titleFromSlug(collectionName)} / ${titleFromSlug(categoryName)}`,
-        searchText: [relativeFolder, await collectSearchText(projectFolder), JSON.stringify(metadata)].join(' '),
-        image: image ? `${relativeFolder}/${image.name}` : null,
-      });
+      const searchText = await collectSearchText(projectFolder);
+      for (const htmlFile of htmlFiles) {
+        const html = await readFile(path.join(projectFolder, htmlFile.name), 'utf8');
+        projects.push({
+          slug: relativeFolder,
+          entry: htmlFile.name,
+          title: titleFromSlug(path.basename(htmlFile.name, path.extname(htmlFile.name))),
+          description: metadata.description || descriptionFromHtml(html) || 'A small work in progress.',
+          category: `${titleFromSlug(collectionName)} / ${titleFromSlug(categoryName)}`,
+          searchText: [relativeFolder, htmlFile.name, searchText, JSON.stringify(metadata)].join(' '),
+          image: image ? `${relativeFolder}/${image.name}` : null,
+        });
+      }
     }
 
     projects.push(...await getProjects(projectFolder));
@@ -138,7 +137,7 @@ const html = `<!doctype html>
     let timer;
     search.addEventListener('input', () => {
       clearTimeout(timer);
-      status.textContent = 'Searching in 2 seconds…';
+      status.textContent = 'Searching in 1 second…';
       timer = setTimeout(() => {
         const query = search.value.trim().toLowerCase();
         let visible = 0;
@@ -148,7 +147,7 @@ const html = `<!doctype html>
           if (matches) visible += 1;
         });
         status.textContent = query ? visible + ' ' + (visible === 1 ? 'match' : 'matches') : '';
-      }, 2000);
+      }, 1000);
     });
   </script>
 </body>
