@@ -13,7 +13,25 @@
   <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 5 projects</nav></header>
   <main class="shell">
     <section class="hero"><span class="kicker">An evolving archive</span><h1>Made for the <em>joy</em> of making.</h1><p>A growing collection of experiments, useful little tools, and things made just because they seemed worth making.</p></section>
-    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">05 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><div class="grid"><a class="project-card" data-search="vibe-coding/space-invaders/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled index.html game.js // Space Invaders Game
+    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">05 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><div class="grid"><a class="project-card" data-search="vibe-coding/space-invaders/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled index.html HISTORY.md # Space Invaders — Development History
+
+## Iterative Development Timeline
+
+![Development Timeline](./timeline.svg)
+
+---
+
+---
+
+## Design Principles Established
+
+| Principle | Description |
+|-----------|-------------|
+| **Level-driven difficulty** | Speed and bullet rate scale by level progression, not by kills |
+| **Fair progression** | Player controls pace — survive to level up, then face harder challenge |
+| **Clean transitions** | Game pauses during level change; all entities cleared before respawn |
+| **Predictable mechanics** | Same level always plays the same way regardless of kill order |
+ game.js // Space Invaders Game
 // Game constants
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 750;
@@ -641,24 +659,6 @@ function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
 window.onload = () =&gt; {
     new Game();
 };
- HISTORY.md # Space Invaders — Development History
-
-## Iterative Development Timeline
-
-![Development Timeline](./timeline.svg)
-
----
-
----
-
-## Design Principles Established
-
-| Principle | Description |
-|-----------|-------------|
-| **Level-driven difficulty** | Speed and bullet rate scale by level progression, not by kills |
-| **Fair progression** | Player controls pace — survive to level up, then face harder challenge |
-| **Clean transitions** | Game pauses during level change; all entities cleared before respawn |
-| **Predictable mechanics** | Same level always plays the same way regardless of kill order |
  index.html &lt;!DOCTYPE html&gt;
 &lt;meta description=&quot;A vibe-coded space invaders clone using qwen3.5-27b-claude-4.6-opus-reasoning-distilled model.&quot;&gt;
 &lt;html lang=&quot;en&quot;&gt;
