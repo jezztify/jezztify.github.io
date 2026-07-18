@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
+const contentRoot = path.join(root, 'vibe-coding');
 const ignored = new Set(['.git', '.github', 'scripts', 'node_modules']);
 
 function escapeHtml(value = '') {
@@ -75,8 +76,8 @@ async function getProjects(folder = root) {
     if (htmlFiles.length) {
       const image = files.find((file) => file.isFile() && /\.(avif|gif|jpe?g|png|webp)$/i.test(file.name));
       const pathParts = relativeFolder.split('/');
-      const collectionName = pathParts[0];
-      const categoryName = pathParts[1] || pathParts[0];
+      const sectionName = pathParts[1] || pathParts[0];
+      const eyebrowName = pathParts[2] || sectionName;
       const searchText = await collectSearchText(projectFolder);
       for (const htmlFile of htmlFiles) {
         const html = await readFile(path.join(projectFolder, htmlFile.name), 'utf8');
@@ -85,7 +86,8 @@ async function getProjects(folder = root) {
           entry: htmlFile.name,
           title: titleFromSlug(path.basename(htmlFile.name, path.extname(htmlFile.name))),
           description: metadata.description || descriptionFromHtml(html) || 'A small work in progress.',
-          category: `${titleFromSlug(collectionName)} / ${titleFromSlug(categoryName)}`,
+          section: titleFromSlug(sectionName),
+          eyebrow: titleFromSlug(eyebrowName),
           searchText: [relativeFolder, htmlFile.name, searchText, JSON.stringify(metadata)].join(' '),
           image: image ? `${relativeFolder}/${image.name}` : null,
         });
@@ -103,14 +105,28 @@ function renderCard(project, index) {
   const preview = `<iframe src="${escapeHtml(projectUrl)}" title="Preview of ${escapeHtml(project.title)}" loading="lazy" tabindex="-1"></iframe>`;
   return `<a class="project-card" data-search="${escapeHtml(project.searchText)}" href="${escapeHtml(projectUrl)}" style="--delay: ${index * 70}ms">
       <div class="card-art">${preview}<span class="arrow" aria-hidden="true">↗</span></div>
-      <div class="card-copy"><span class="eyebrow">${escapeHtml(project.category)}</span><h2>${escapeHtml(project.title)}</h2><p>${escapeHtml(project.description)}</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
+      <div class="card-copy"><span class="eyebrow">${escapeHtml(project.eyebrow)}</span><h2>${escapeHtml(project.title)}</h2><p>${escapeHtml(project.description)}</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>`;
 }
 
-const projects = await getProjects();
-const cards = projects.length
-  ? projects.map(renderCard).join('\n')
-  : `<div class="empty-state"><span class="empty-mark">✦</span><h2>Your next project starts here.</h2><p>Add a folder containing any <strong>.html</strong> file, then run the build to feature it on this page.</p></div>`;
+const projects = await getProjects(contentRoot);
+const sectionFolders = (await readdir(contentRoot, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+  .sort((a, b) => a.name.localeCompare(b.name));
+const projectsBySection = new Map();
+for (const project of projects) {
+  const sectionProjects = projectsBySection.get(project.section) || [];
+  sectionProjects.push(project);
+  projectsBySection.set(project.section, sectionProjects);
+}
+const sections = sectionFolders.map((folder) => {
+  const section = titleFromSlug(folder.name);
+  const sectionProjects = projectsBySection.get(section) || [];
+  const cards = sectionProjects.length
+    ? sectionProjects.map((project, index) => renderCard(project, index)).join('\n')
+    : `<div class="empty-state"><span class="empty-mark">✦</span><h2>No work here yet.</h2><p>Add a folder containing any <strong>.html</strong> file to feature it in this section.</p></div>`;
+  return `<section class="collection-section" aria-labelledby="section-${escapeHtml(folder.name)}"><div class="collection-head"><h2 id="section-${escapeHtml(folder.name)}">${escapeHtml(section)}</h2><span class="count">${String(sectionProjects.length).padStart(2, '0')} works</span></div><div class="grid">${cards}</div></section>`;
+}).join('\n');
 
 const html = `<!doctype html>
 <html lang="en">
@@ -127,7 +143,7 @@ const html = `<!doctype html>
   <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · ${projects.length} ${projects.length === 1 ? 'project' : 'projects'}</nav></header>
   <main class="shell">
     <section class="hero"><span class="kicker">An evolving archive</span><h1>Made for the <em>joy</em> of making.</h1><p>A growing collection of experiments, useful little tools, and things made just because they seemed worth making.</p></section>
-    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">${String(projects.length).padStart(2, '0')} works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><div class="grid">${cards}</div></section>
+    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">${String(projects.length).padStart(2, '0')} works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div>${sections}</section>
   </main>
   <footer class="shell"><span>© ${new Date().getFullYear()} Jezztify</span><span>Built one folder at a time.</span></footer>
   <script>

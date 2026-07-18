@@ -1,6 +1,6 @@
 # Jezztify hobby gallery
 
-The homepage is generated from project folders so the collection grows automatically.
+The homepage is generated from project folders so the collection grows automatically. Each first-level folder under `vibe-coding` (such as `games` or `tools`) becomes a gallery section. Each card's eyebrow contains the immediate project folder beneath its category, such as `flight-simulator` under `games`.
 
 ## Add a project
 
