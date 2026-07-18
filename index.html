@@ -13,7 +13,72 @@
   <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 6 projects</nav></header>
   <main class="shell">
     <section class="hero"><span class="kicker">An evolving archive</span><h1>Made for the <em>joy</em> of making.</h1><p>A growing collection of experiments, useful little tools, and things made just because they seemed worth making.</p></section>
-    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">06 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">06 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html game.js // Space Invaders Game
+    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">06 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">06 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html HISTORY.md # Space Invaders — Development History
+
+## Iterative Development Timeline
+
+![Development Timeline](./timeline.svg)
+
+---
+
+---
+
+## Design Principles Established
+
+| Principle | Description |
+|-----------|-------------|
+| **Level-driven difficulty** | Speed and bullet rate scale by level progression, not by kills |
+| **Fair progression** | Player controls pace — survive to level up, then face harder challenge |
+| **Clean transitions** | Game pauses during level change; all entities cleared before respawn |
+| **Predictable mechanics** | Same level always plays the same way regardless of kill order |
+ Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html &lt;!DOCTYPE html&gt;
+&lt;meta description=&quot;A vibe-coded space invaders clone using qwen3.5-27b-claude-4.6-opus-reasoning-distilled model.&quot;&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+    &lt;title&gt;Space Invaders&lt;/title&gt;
+    &lt;link rel=&quot;stylesheet&quot; href=&quot;styles.css&quot;&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div class=&quot;game-container&quot;&gt;
+        &lt;header&gt;
+            &lt;h1&gt;SPACE INVADERS&lt;/h1&gt;
+            &lt;div class=&quot;score-board&quot;&gt;
+                &lt;span&gt;Score: &lt;span id=&quot;score&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
+                &lt;span&gt;Lives: &lt;span id=&quot;lives&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
+                &lt;span&gt;Level: &lt;span id=&quot;level&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
+            &lt;/div&gt;
+        &lt;/header&gt;
+        
+        &lt;div class=&quot;game-wrapper&quot;&gt;
+            &lt;canvas id=&quot;gameCanvas&quot;&gt;&lt;/canvas&gt;
+            &lt;div id=&quot;startScreen&quot; class=&quot;screen&quot;&gt;
+                &lt;h2&gt;SPACE INVADERS&lt;/h2&gt;
+                &lt;p&gt;Use ← → Arrow Keys to Move&lt;/p&gt;
+                &lt;p&gt;Press SPACE to Shoot&lt;/p&gt;
+                &lt;button id=&quot;startBtn&quot;&gt;START GAME&lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div id=&quot;gameOverScreen&quot; class=&quot;screen hidden&quot;&gt;
+                &lt;h2&gt;GAME OVER&lt;/h2&gt;
+                &lt;p&gt;Final Score: &lt;span id=&quot;finalScore&quot;&gt;0&lt;/span&gt;&lt;/p&gt;
+                &lt;button id=&quot;restartBtn&quot;&gt;PLAY AGAIN&lt;/button&gt;
+            &lt;/div&gt;
+            &lt;div id=&quot;levelScreen&quot; class=&quot;screen hidden&quot;&gt;
+                &lt;h2&gt;LEVEL UP!&lt;/h2&gt;
+                &lt;p&gt;Get Ready...&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        
+        &lt;footer&gt;
+            &lt;p&gt;Built with ❤️ using HTML5 Canvas&lt;/p&gt;
+        &lt;/footer&gt;
+    &lt;/div&gt;
+    
+    &lt;script src=&quot;game.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ game.js // Space Invaders Game
 // Game constants
 const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 750;
@@ -641,71 +706,6 @@ function rectIntersect(x1, y1, w1, h1, x2, y2, w2, h2) {
 window.onload = () =&gt; {
     new Game();
 };
- HISTORY.md # Space Invaders — Development History
-
-## Iterative Development Timeline
-
-![Development Timeline](./timeline.svg)
-
----
-
----
-
-## Design Principles Established
-
-| Principle | Description |
-|-----------|-------------|
-| **Level-driven difficulty** | Speed and bullet rate scale by level progression, not by kills |
-| **Fair progression** | Player controls pace — survive to level up, then face harder challenge |
-| **Clean transitions** | Game pauses during level change; all entities cleared before respawn |
-| **Predictable mechanics** | Same level always plays the same way regardless of kill order |
- Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html &lt;!DOCTYPE html&gt;
-&lt;meta description=&quot;A vibe-coded space invaders clone using qwen3.5-27b-claude-4.6-opus-reasoning-distilled model.&quot;&gt;
-&lt;html lang=&quot;en&quot;&gt;
-&lt;head&gt;
-    &lt;meta charset=&quot;UTF-8&quot;&gt;
-    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
-    &lt;title&gt;Space Invaders&lt;/title&gt;
-    &lt;link rel=&quot;stylesheet&quot; href=&quot;styles.css&quot;&gt;
-&lt;/head&gt;
-&lt;body&gt;
-    &lt;div class=&quot;game-container&quot;&gt;
-        &lt;header&gt;
-            &lt;h1&gt;SPACE INVADERS&lt;/h1&gt;
-            &lt;div class=&quot;score-board&quot;&gt;
-                &lt;span&gt;Score: &lt;span id=&quot;score&quot;&gt;0&lt;/span&gt;&lt;/span&gt;
-                &lt;span&gt;Lives: &lt;span id=&quot;lives&quot;&gt;3&lt;/span&gt;&lt;/span&gt;
-                &lt;span&gt;Level: &lt;span id=&quot;level&quot;&gt;1&lt;/span&gt;&lt;/span&gt;
-            &lt;/div&gt;
-        &lt;/header&gt;
-        
-        &lt;div class=&quot;game-wrapper&quot;&gt;
-            &lt;canvas id=&quot;gameCanvas&quot;&gt;&lt;/canvas&gt;
-            &lt;div id=&quot;startScreen&quot; class=&quot;screen&quot;&gt;
-                &lt;h2&gt;SPACE INVADERS&lt;/h2&gt;
-                &lt;p&gt;Use ← → Arrow Keys to Move&lt;/p&gt;
-                &lt;p&gt;Press SPACE to Shoot&lt;/p&gt;
-                &lt;button id=&quot;startBtn&quot;&gt;START GAME&lt;/button&gt;
-            &lt;/div&gt;
-            &lt;div id=&quot;gameOverScreen&quot; class=&quot;screen hidden&quot;&gt;
-                &lt;h2&gt;GAME OVER&lt;/h2&gt;
-                &lt;p&gt;Final Score: &lt;span id=&quot;finalScore&quot;&gt;0&lt;/span&gt;&lt;/p&gt;
-                &lt;button id=&quot;restartBtn&quot;&gt;PLAY AGAIN&lt;/button&gt;
-            &lt;/div&gt;
-            &lt;div id=&quot;levelScreen&quot; class=&quot;screen hidden&quot;&gt;
-                &lt;h2&gt;LEVEL UP!&lt;/h2&gt;
-                &lt;p&gt;Get Ready...&lt;/p&gt;
-            &lt;/div&gt;
-        &lt;/div&gt;
-        
-        &lt;footer&gt;
-            &lt;p&gt;Built with ❤️ using HTML5 Canvas&lt;/p&gt;
-        &lt;/footer&gt;
-    &lt;/div&gt;
-    
-    &lt;script src=&quot;game.js&quot;&gt;&lt;/script&gt;
-&lt;/body&gt;
-&lt;/html&gt;
  styles.css * {
     margin: 0;
     padding: 0;
@@ -8136,8 +8136,7 @@ init();
  {}" href="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" style="--delay: 350ms">
       <div class="card-art"><iframe src="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" title="Preview of Qwen3.6 35b A3b Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Cod Clone</span><h2>Qwen3.6 35b A3b Mtp</h2><p>A vibe-coded COD-clone using qwen3.6-35b-a3b-mtp model</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
-    </a></div></section>
-<section class="collection-section" aria-labelledby="section-tools"><div class="collection-head"><h2 id="section-tools">Tools</h2><span class="count">00 works</span></div><div class="grid"><div class="empty-state"><span class="empty-mark">✦</span><h2>No work here yet.</h2><p>Add a folder containing any <strong>.html</strong> file to feature it in this section.</p></div></div></section></section>
+    </a></div></section></section>
   </main>
   <footer class="shell"><span>© 2026 Jezztify</span><span>Built one folder at a time.</span></footer>
   <script>
