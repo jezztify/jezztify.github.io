@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: black;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game Constants & State
+        let score = 0;
+        let level = 1;
+        let isGameOver = false;
+        let friendlyFire = false; // New flag to track cause of game over
+        let gamePaused = false;
+        let bonusEnabled = false;
+        let lastTime = 0;
+        const keysPressed = {};
+
+        // Entities
+        let ship;
+        let asteroids = [];
+        let projectiles = [];
+        let particles = [];
+        let stars = [];
+
+        class Ship {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.rotation = -Math.PI / 2; // Facing up
+                this.radius = 15;
+            }
+
+            update(dt) {
+                if (keysPressed['ArrowLeft'] || keysPressed['KeyA']) this.rotation -= 5 * Math.PI / 180 * dt;
+                if (keysPressed['ArrowRight'] || keysPressed['KeyD']) this.rotation += 5 * Math.PI / 180 * dt;
+
+                if (keysPressed['ArrowUp'] || keysPressed['KeyW']) {
+                    this.velocityX += Math.cos(this.rotation) * 0.3 * dt; // Reverted to original acceleration of 0.3 px/frame^2
+                    this.velocityY += Math.sin(this.rotation) * 0.3 * dt;
+                } else {
+                    this.velocityX *= 0.98;
+                    this.velocityY *= 0.98;
+                }
+
+                const speed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+                if (speed > 8) { // Reverted to original max speed cap of 8 px/frame
+                    this.velocityX = (this.velocityX / speed) * 8;
+                    this.velocityY = (this.velocityY / speed) * 8;
+                }
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Wrap around
+                if (this.x < 0) this.x = canvas.width;
+                else if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                else if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Thruster Flame
+                if (keysPressed['ArrowUp'] || keysPressed['KeyW']) {
+                    ctx.fillStyle = 'red';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 5);
+                    ctx.lineTo(-25, 0);
+                    ctx.lineTo(-10, -5);
+                    ctx.fill();
+                }
+
+                // Ship Body (Elongated triangle 20x30)
+                ctx.fillStyle = 'cyan';
+                ctx.beginPath();
+                ctx.moveTo(15, 0);  // Tip
+                ctx.lineTo(-10, -10); // Back left
+                ctx.lineTo(-10, 10);  // Back right
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.velocityX = vx;
+                this.velocityY = vy;
+                this.distanceTraveled = 0;
+                this.lifeSpan = 1000; // px limit
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.distanceTraveled += Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+
+                if (this.x < 0) this.x = canvas.width;
+                else if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                else if (this.y > canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = 'yellow';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Asteroid {
+            constructor(x, y, radius, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.vx = vx;
+                this.vy = vy;
+                this.vertices = [];
+                const numVertices = 8 + Math.floor(Math.random() * 5);
+                for (let i = 0; i < numVertices; i++) {
+                    const angle = (i / numVertices) * Math.PI * 2;
+                    const dist = radius * (0.8 + Math.random() * 0.4);
+                    this.vertices.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < -this.radius) this.x = canvas.width + this.radius;
+                else if (this.x > canvas.width + this.radius) this.x = -this.radius;
+                if (this.y < -this.radius) this.y = canvas.height + this.radius;
+                else if (this.y > canvas.height + this.radius) this.y = -this.radius;
+            }
+
+            draw() {
+                ctx.strokeStyle = 'grey';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.vertices[0].x, this.y + this.vertices[0].y);
+                for (let i = 1; i < this.vertices.length; i++) {
+                    ctx.lineTo(this.x + this.vertices[i].x, this.y + this.vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            split() {
+                if (this.radius > 15) {
+                    const newRad = this.radius / 1.5;
+                    return [
+                        new Asteroid(this.x, this.y, newRad, this.vx * 1.2, this.vy * 1.2),
+                        new Asteroid(this.x, this.y, newRad, -this.vx * 0.8, -this.vy * 0.8)
+                    ];
+                }
+                return [];
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+                this.lifeSpan = 1.0;
+                this.color = color;
+            }
+
+            update(dt) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.lifeSpan -= dt * 0.5;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.lifeSpan;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 2, 2);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function initGame() {
+            score = 0;
+            level = 1;
+            isGameOver = false;
+            bonusEnabled = false;
+            ship = new Ship();
+            asteroids = [];
+            projectiles = [];
+            particles = [];
+            stars = Array.from({ length: 100 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                opacity: Math.random()
+            }));
+
+            spawnAsteroids(5);
+        }
+
+        function spawnAsteroids(count) {
+            const baseSpeed = 1.5 + (level - 1) * 0.3;
+            for (let i = 0; i < count; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                } while (Math.hypot(x - ship.x, y - ship.y) < 100);
+
+                const radius = 40;
+                const vx = (Math.random() - 0.5) * baseSpeed * 2;
+                const vy = (Math.random() - 0.5) * baseSpeed * 2;
+                asteroids.push(new Asteroid(x, y, radius, vx, vy));
+            }
+        }
+
+        function handleCollisions() {
+            friendlyFire = false; // Reset each frame
+            // Projectile vs Asteroid
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    const a = asteroids[j];
+                    if (Math.hypot(p.x - a.x, p.y - a.y) < a.radius) {
+                        // Hit!
+                        createExplosion(a.x, a.y, 'orange');
+                        const newAsteroids = a.split();
+                        asteroids.splice(j, 1);
+                        projectiles.splice(i, 1);
+                        score += Math.floor(a.radius);
+                        if (newAsteroids.length > 0) {
+                            asteroids.push(...newAsteroids);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Ship vs Asteroid
+            for (let a of asteroids) {
+                if (Math.hypot(ship.x - a.x, ship.y - a.y) < a.radius + ship.radius * 0.8) {
+                    isGameOver = true;
+                    friendlyFire = false; // Ship hit by asteroid is standard Game Over
+                    document.getElementById('gameCanvas').style.border = '2px solid red';
+                }
+            }
+
+            // Projectile vs Ship (Friendly Fire)
+            for (let p of projectiles) {
+                if (Math.hypot(p.x - ship.x, p.y - ship.y) < ship.radius + 5 && p.distanceTraveled > 100) {
+                    isGameOver = true;
+                    friendlyFire = true; // Projectile hit own ship is Friendly Fire
+                    document.getElementById('gameCanvas').style.border = '2px solid red';
+                }
+            }
+
+            if (asteroids.length === 0 && !isGameOver) {
+                level++;
+                spawnAsteroids(5 + (level - 1) * 2);
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function update(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 16 === 0 ? 1 : (timestamp - lastTime) / 16; // Normalize to ~60fps steps if needed, but requirements say use delta time.
+            // Actually let's just use a standard dt calculation:
+            const realDt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (!gamePaused && !isGameOver) {
+                ship.update(realDt * 60); // Scale to "per frame" logic if needed, but requirements say use delta time for stable movement.
+                // Let's stick to the requirement: "Use requestAnimationFrame with delta time for stable movement."
+
+                projectiles.forEach((p, i) => {
+                    p.update();
+                    if (p.distanceTraveled > 1000) projectiles.splice(i, 1);
+                });
+
+                asteroids.forEach(a => a.update());
+                particles.forEach((p, i) => {
+                    p.update(realDt * 60);
+                    if (p.lifeSpan <= 0) particles.splice(i, 1);
+                });
+
+                handleCollisions();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            stars.forEach(s => {
+                ctx.globalAlpha = s.opacity;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+            ctx.globalAlpha = 1.0;
+
+            particles.forEach(p => p.draw());
+            projectiles.forEach(p => p.draw());
+            asteroids.forEach(a => a.draw());
+            ship.draw();
+
+            // HUD
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Courier New';
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.fillText(`Level: ${level}`, 20, 50);
+            
+            if (!bonusEnabled) {
+                ctx.fillText(`Projectiles: ${projectiles.length}/3`, 20, 70);
+            } else {
+                ctx.fillStyle = 'yellow';
+                ctx.fillText(`BONUS: INFINITE PROJECTILES`, 20, 70);
+            }
+
+            if (isGameOver) {
+                ctx.fillStyle = 'red';
+                ctx.textAlign = 'center';
+                const msg = friendlyFire ? "FRIENDLY FIRE! - Press R to Restart" : "GAME OVER - Press R to Restart";
+                ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+            }
+
+            ctx.textAlign = 'left'; // Reset
+        }
+
+        window.addEventListener('keydown', e => {
+            keysPressed[e.code] = true;
+            if (e.code === 'Space') {
+                const canFire = !bonusEnabled || projectiles.length < 3; // Changed from && to || for Infinite Projectiles bonus
+                if (canFire) {
+                    // Projectile initial velocity equals the ship's current velocity plus a value that is 1.3x the max speed of the ship.
+                    // Max ship speed is 8 px/frame, so base projectile velocity should be 8 * 1.3 = 10.4 px/frame.
+                    const baseVx = Math.cos(ship.rotation) * 10.4;
+                    const baseVy = Math.sin(ship.rotation) * 10.4;
+                    projectiles.push(new Projectile(ship.x, ship.y, baseVx + ship.velocityX, baseVy + ship.velocityY));
+                }
+            }
+            if (e.code === 'KeyR' && isGameOver) {
+                initGame();
+                document.getElementById('gameCanvas').style.border = '2px solid #333';
+            }
+            if (e.code === 'KeyB') {
+                bonusEnabled = !bonusEnabled;
+            }
+        });
+
+        window.addEventListener('keyup', e => keysPressed[e.code] = false);
+        document.addEventListener('visibilitychange', () => gamePaused = document.hidden);
+
+        initGame();
+        requestAnimationFrame(update);
+    </script>
+</body>
+</html>

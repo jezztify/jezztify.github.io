@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asteroids</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #0a0a1a;
+    font-family: monospace;
+  }
+  h1 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    letter-spacing: 4px;
+    font-weight: normal;
+  }
+  canvas {
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    object-fit: contain;
+    border: 1px solid #333;
+  }
+  .controls-hint {
+    color: #666666;
+    font-size: 0.85rem;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+<h1>Asteroids</h1>
+<canvas id="game" width="800" height="600"></canvas>
+<p class="controls-hint">← → / A D Rotate · ↑ / W Thrust · Space Fire · R Restart · B Bonus</p>
+
+<script>
+(function () {
+  "use strict";
+
+  // ─── Constants ──────────────────────────────────────────────
+  const W = 800, H = 600;
+  const ROT_SPEED = 5 * Math.PI / 180;   // 5 degrees/frame in radians
+  const THRUST_ACCEL = 0.3;               // px/frame²
+  const MAX_SPEED = 8;                    // px/frame
+  const FRICTION = 0.98;                  // multiplier when no thrust
+  const PROJ_MAX_DIST = 1000;             // pixels before despawn
+  const PROJ_SPEED_BONUS = 6;             // extra speed in facing dir
+  const MAX_PROJECTILES = 3;
+  const SHIP_COLLISION_R = 15;            // px radius for ship collision circle
+  const ASTEROID_START_COUNT = 5;
+  const ASTEROID_LARGE_RADIUS = 40;
+  const ASTEROID_SPLIT_DIVISOR = 1.5;
+  const ASTEROID_DESTROY_THRESHOLD = 15;  // px — below this, destroy without split
+  const PARTICLE_COLORS = ["#ff4444", "#ffaa00", "#ffff00", "#44ff44", "#4444ff"];
+
+  // ─── Canvas & Context ──────────────────────────────────────
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  // ─── Input Manager ─────────────────────────────────────────
+  const pressedKeys = {};
+
+  var gameKeyMap = {
+    "ArrowLeft": "left",
+    "ArrowRight": "right",
+    "ArrowUp": "up",
+    "a": "left", "A": "left",
+    "d": "right", "D": "right",
+    "w": "up", "W": "up",
+    " ": "fire",
+    "b": "bonus", "B": "bonus",
+    "r": "restart", "R": "restart"
+  };
+
+  // Use capture phase so we catch keys before browser default processing (Space scrolls)
+  document.addEventListener("keydown", function (e) {
+    var action = gameKeyMap[e.key];
+    if (action) e.preventDefault();
+    pressedKeys[e.key] = true;
+  }, { capture: true });
+
+  window.addEventListener("keyup", function (e) {
+    pressedKeys[e.key] = false;
+  });
+
+  // Ensure canvas captures keyboard focus on click and auto-focuses on load
+  canvas.setAttribute("tabindex", "0");
+  canvas.focus();
+
+  // ─── Starfield (generated once) ─────────────────────────────
+  var stars = [];
+  for (var i = 0; i < 150; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      alpha: 0.1 + Math.random() * 0.4
+    });
+  }
+
+  // ─── Game State ──────────────────────────────────────────────
+  var state = {};
+
+  function resetGame(fullRestart) {
+    if (fullRestart === undefined) fullRestart = true;
+    state.ship = createShip(W / 2, H / 2);
+    state.projectiles = [];
+    state.asteroids = [];
+    state.particles = [];
+    state.score = 0;
+    state.level = 1;
+    state.arcShot = false;
+    if (fullRestart) {
+      state.status = "playing"; // playing, gameover, friendlyfire, levelcomplete
+      state.completeTimer = 0;
+    } else {
+      state.status = "playing";
+      state.completeTimer = 0;
+    }
+    spawnLevelAsteroids();
+  }
+
+  function nextLevel() {
+    state.level++;
+    state.projectiles = [];
+    state.particles = [];
+    state.ship.alive = true;
+    state.status = "playing";
+    state.completeTimer = 0;
+    // Reset ship to center for new level
+    state.ship.x = W / 2;
+    state.ship.y = H / 2;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    spawnLevelAsteroids();
+  }
+
+  function spawnLevelAsteroids() {
+    var count = ASTEROID_START_COUNT + (state.level - 1) * 2;
+    var speedMult = 1 + (state.level - 1) * 0.3 / 2; // base ~2, add 0.3 per level
+    for (var i = 0; i < count; i++) {
+      spawnAsteroidAway(ASTEROID_LARGE_RADIUS, speedMult);
+    }
+  }
+
+  function spawnAsteroidAway(radius, speedMult) {
+    var x, y, dist;
+    do {
+      x = Math.random() * W;
+      y = Math.random() * H;
+      dx = x - state.ship.x;
+      dy = y - state.ship.y;
+      // Handle wrapping distance for placement check
+      if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+      if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+      dist = Math.sqrt(dx * dx + dy * dy);
+    } while (dist < 150);
+
+    var angle = Math.random() * Math.PI * 2;
+    var speed = (1.5 + Math.random()) * (speedMult || 1); // 1.5-2.5 base, scaled by level
+    state.asteroids.push(createAsteroid(x, y, radius, Math.cos(angle) * speed, Math.sin(angle) * speed));
+  }
+
+  // ─── Entity Factories ──────────────────────────────────────
+  function createShip(x, y) {
+    return { x: x || W / 2, y: y || H / 2, angle: 0, vx: 0, vy: 0, alive: true };
+  }
+
+  function createAsteroid(x, y, radius, vx, vy) {
+    var verts = [];
+    var nVerts = 8 + Math.floor(Math.random() * 6); // 8-13 vertices
+    for (var i = 0; i < nVerts; i++) {
+      var a = (i / nVerts) * Math.PI * 2;
+      var r = radius * (0.75 + Math.random() * 0.5); // ±25% perturbation
+      verts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+    }
+    return { x: x, y: y, vx: vx || 0, vy: vy || 0, radius: radius, vertices: verts };
+  }
+
+  function spawnParticles(x, y, count) {
+    for (var i = 0; i < count; i++) {
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 0.5 + Math.random() * 3.5; // 0.5-4 px/frame
+      var maxLife = 20 + Math.floor(Math.random() * 21); // 20-40 frames
+      state.particles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: maxLife,
+        maxLife: maxLife,
+        color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+        size: 1 + Math.random() * 2 // 1-3px radius
+      });
+    }
+  }
+
+  var dx, dy; // reused for distance calcs
+
+  // ─── Update Functions ──────────────────────────────────────
+  function updateShip() {
+    // Rotation (5 degrees/frame = ROT_SPEED radians)
+    if (pressedKeys["ArrowLeft"] || pressedKeys["a"] || pressedKeys["A"]) state.ship.angle -= ROT_SPEED;
+    if (pressedKeys["ArrowRight"] || pressedKeys["d"] || pressedKeys["D"]) state.ship.angle += ROT_SPEED;
+
+    // Thrust
+    var thrusting = !!(pressedKeys["ArrowUp"] || pressedKeys["w"] || pressedKeys["W"]);
+
+    // Thrust direction matches the ship's tip via transformPoint rotation
+    var thrustDirX =  Math.sin(state.ship.angle);
+    var thrustDirY = -Math.cos(state.ship.angle);
+
+    if (!state.ship.alive) return;
+    if (thrusting) {
+      state.ship.vx += thrustDirX * THRUST_ACCEL;
+      state.ship.vy += thrustDirY * THRUST_ACCEL;
+    } else {
+      // Friction when not thrusting
+      state.ship.vx *= FRICTION;
+      state.ship.vy *= FRICTION;
+    }
+
+    // Clamp speed to MAX_SPEED
+    var mag = Math.sqrt(state.ship.vx * state.ship.vx + state.ship.vy * state.ship.vy);
+    if (mag > MAX_SPEED) {
+      state.ship.vx = (state.ship.vx / mag) * MAX_SPEED;
+      state.ship.vy = (state.ship.vy / mag) * MAX_SPEED;
+    }
+
+    // Move
+    state.ship.x += state.ship.vx;
+    state.ship.y += state.ship.vy;
+
+    // Wrap around edges
+    if (state.ship.x < -20) state.ship.x = W + 20;
+    else if (state.ship.x > W + 20) state.ship.x = -20;
+    if (state.ship.y < -20) state.ship.y = H + 20;
+    else if (state.ship.y > H + 20) state.ship.y = -20;
+
+    // Fire projectile on Space press
+    if (pressedKeys[" "]) {
+      fireProjectile();
+      pressedKeys[" "] = false; // debounce — one shot per keypress
+    }
+
+    // Toggle bonus with B key
+    if (pressedKeys["b"] || pressedKeys["B"]) {
+      state.arcShot = !state.arcShot;
+      pressedKeys["b"] = false;
+      pressedKeys["B"] = false;
+    }
+  }
+
+  function fireProjectile() {
+    var currentCount = 0;
+    for (var i = 0; i < state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) currentCount++;
+    }
+
+    // Tip direction matches transformPoint rotation for consistency with thrust
+    var tipDirX  =  Math.sin(state.ship.angle);
+    var tipDirY  = -Math.cos(state.ship.angle);
+    var tipWorldX = state.ship.x + tipDirX * 15;
+    var tipWorldY = state.ship.y + tipDirY * 15;
+
+    if (state.arcShot) {
+      // Arc shot: fire 3 projectiles at angle-15°, angle, angle+15° using same rotation as ship tip
+      for (var i = -1; i <= 1; i++) {
+        var a = state.ship.angle + i * 15 * Math.PI / 180;
+        state.projectiles.push({
+          x: tipWorldX, y: tipWorldY,
+          vx: state.ship.vx + Math.sin(a) * PROJ_SPEED_BONUS,
+          vy: state.ship.vy - Math.cos(a) * PROJ_SPEED_BONUS,
+          distanceTraveled: 0,
+          alive: true
+        });
+      }
+    } else {
+      if (currentCount >= MAX_PROJECTILES) return;
+
+      state.projectiles.push({
+        x: tipWorldX, y: tipWorldY,
+        vx: state.ship.vx + tipDirX * PROJ_SPEED_BONUS,
+        vy: state.ship.vy + tipDirY * PROJ_SPEED_BONUS,
+        distanceTraveled: 0,
+        alive: true
+      });
+    }
+  }
+
+  function updateProjectiles() {
+    for (var i = state.projectiles.length - 1; i >= 0; i--) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      // Move and track distance
+      p.x += p.vx;
+      p.y += p.vy;
+      p.distanceTraveled += Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+
+      // Wrap around edges
+      if (p.x < 0) p.x = W; else if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; else if (p.y > H) p.y = 0;
+
+      // Remove if exceeded max distance
+      if (p.distanceTraveled >= PROJ_MAX_DIST) {
+        p.alive = false;
+      }
+    }
+    // Clean up dead projectiles periodically
+    state.projectiles = state.projectiles.filter(function (p) { return p.alive; });
+  }
+
+  function updateAsteroids() {
+    for (var i = 0; i < state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      a.x += a.vx;
+      a.y += a.vy;
+
+      // Wrap around edges
+      if (a.x < -a.radius) a.x = W + a.radius;
+      else if (a.x > W + a.radius) a.x = -a.radius;
+      if (a.y < -a.radius) a.y = H + a.radius;
+      else if (a.y > H + a.radius) a.y = -a.radius;
+    }
+  }
+
+  function updateParticles() {
+    for (var i = state.particles.length - 1; i >= 0; i--) {
+      var p = state.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+      if (p.life <= 0) {
+        state.particles.splice(i, 1);
+      }
+    }
+  }
+
+  // ─── Collision Detection ──────────────────────────────────
+  function checkCollisions() {
+    if (!state.ship.alive || state.status !== "playing") return;
+
+    // Ship vs asteroids (circle-circle)
+    for (var i = 0; i < state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      dx = a.x - state.ship.x;
+      dy = a.y - state.ship.y;
+      if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+      if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < SHIP_COLLISION_R + a.radius) {
+        state.ship.alive = false;
+        state.status = "gameover";
+        return;
+      }
+    }
+
+    // Projectiles vs asteroids (point-in-circle)
+    for (var i = 0; i < state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      for (var j = 0; j < state.asteroids.length; j++) {
+        var a = state.asteroids[j];
+        dx = a.x - p.x;
+        dy = a.y - p.y;
+        // Handle wrapping distance check
+        if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+        if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < a.radius) {
+          p.alive = false;
+          // Score: larger asteroids worth more points
+          state.score += Math.round(a.radius);
+
+          // Spawn particles at collision point
+          spawnParticles(p.x, p.y, 12);
+
+          // Split or destroy asteroid
+          if (a.radius > ASTEROID_DESTROY_THRESHOLD) {
+            var newRadius = a.radius / ASTEROID_SPLIT_DIVISOR;
+            var speedBoost = 1.2;
+            var numPieces = 2 + Math.floor(Math.random() * 2); // 2-3 pieces
+
+            for (var k = 0; k < numPieces; k++) {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = Math.sqrt(a.vx * a.vx + a.vy * a.vy) * speedBoost || (1.5 + Math.random()) * speedBoost;
+              state.asteroids.push(createAsteroid(
+                a.x, a.y, newRadius,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+              ));
+            }
+          }
+
+          // Remove the hit asteroid
+          state.asteroids.splice(j, 1);
+          break;
+        }
+      }
+    }
+
+    // Friendly fire: projectiles vs ship (point-in-circle with ~15px radius)
+    for (var i = 0; i < state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive || !state.ship.alive) continue;
+
+      dx = state.ship.x - p.x;
+      dy = state.ship.y - p.y;
+      // Handle wrapping distance check for friendly fire too
+      if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+      if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < SHIP_COLLISION_R) {
+        state.ship.alive = false;
+        state.status = "friendlyfire";
+        return;
+      }
+    }
+
+    // Check level complete: all asteroids cleared
+    if (state.asteroids.length === 0 && state.status === "playing") {
+      state.status = "levelcomplete";
+      state.completeTimer = Date.now();
+    }
+  }
+
+  function checkLevelComplete() {
+    if (state.status !== "levelcomplete") return;
+    var elapsed = Date.now() - state.completeTimer;
+    if (elapsed >= 2000) {
+      nextLevel();
+    }
+  }
+
+  // ─── Render Functions ──────────────────────────────────────
+  function drawStarfield() {
+    ctx.fillStyle = "#ffffff";
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawShip() {
+    if (!state.ship.alive) return;
+
+    var cos = Math.cos(state.ship.angle);
+    var sin = Math.sin(state.ship.angle);
+
+    // Ship vertices in local space: tip (0,-15), left (-10,12), right (10,12)
+    // Transform to world space using rotation matrix around ship center
+    function transformPoint(lx, ly) {
+      return {
+        x: state.ship.x + lx * cos - ly * sin,
+        y: state.ship.y + lx * sin + ly * cos
+      };
+    }
+
+    var tip = transformPoint(0, -15);
+    var left = transformPoint(-10, 12);
+    var right = transformPoint(10, 12);
+
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Thruster flame when thrusting
+    if (pressedKeys["ArrowUp"] || pressedKeys["w"] || pressedKeys["W"]) {
+      var tailCenter = transformPoint(0, 15);
+      var tailLeft = transformPoint(-6, 24);
+      var tailRight = transformPoint(6, 24);
+
+      ctx.fillStyle = "#ff4422";
+      ctx.beginPath();
+      ctx.moveTo(tailCenter.x, tailCenter.y);
+      ctx.lineTo(tailLeft.x, tailLeft.y);
+      ctx.lineTo(tailRight.x, tailRight.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawAsteroids() {
+    ctx.strokeStyle = "#8b7355";
+    ctx.lineWidth = 1.5;
+    for (var i = 0; i < state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      ctx.beginPath();
+      for (var j = 0; j < a.vertices.length; j++) {
+        var vx = a.x + a.vertices[j].x;
+        var vy = a.y + a.vertices[j].y;
+        if (j === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  function drawProjectiles() {
+    ctx.fillStyle = "#ff6b6b";
+    for (var i = 0; i < state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    for (var i = 0; i < state.particles.length; i++) {
+      var p = state.particles[i];
+      var alpha = p.life / p.maxLife;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawHUD() {
+    // Score and Level (top-left)
+    ctx.textAlign = "left";
+    ctx.font = "16px monospace";
+    ctx.fillStyle = "#aaaaaa";
+    ctx.fillText("SCORE: " + state.score, 15, 28);
+    ctx.fillText("LEVEL: " + state.level, 15, 48);
+
+    // Projectile count (top-right)
+    var aliveCount = 0;
+    for (var i = 0; i < state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) aliveCount++;
+    }
+    ctx.textAlign = "right";
+    ctx.font = "14px monospace";
+    ctx.fillStyle = "#aaaaaa";
+    ctx.fillText("PROJECTILES: " + aliveCount + "/3", W - 15, 28);
+
+    // Bonus indicator (top-right below projectile count)
+    if (state.arcShot) {
+      ctx.font = "bold 14px monospace";
+      ctx.fillStyle = "#ffaa00";
+      ctx.fillText("ARC SHOT: ON", W - 15, 46);
+    }
+  }
+
+  function drawOverlay(titleText, titleColor, subtitleText) {
+    // Semi-transparent dark background
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, 0, W, H);
+
+    // Title text (centered)
+    ctx.textAlign = "center";
+    ctx.font = "36px monospace bold";
+    ctx.fillStyle = titleColor;
+    ctx.fillText(titleText, W / 2, 290);
+
+    // Subtitle text
+    if (subtitleText) {
+      ctx.font = "20px monospace";
+      ctx.fillStyle = "#aaaaaa";
+      ctx.fillText(subtitleText, W / 2, 335);
+    }
+  }
+
+  function drawStatusOverlay() {
+    switch (state.status) {
+      case "gameover":
+        drawOverlay("GAME OVER", "#ffffff", "Press R to Restart");
+        break;
+      case "friendlyfire":
+        drawOverlay("FRIENDLY FIRE!", "#ff6b6b", "Press R to Restart");
+        break;
+      case "levelcomplete":
+        var remaining = Math.max(0, 2 - (Date.now() - state.completeTimer) / 1000);
+        drawOverlay("LEVEL COMPLETE!", "#44ff44", "Next level in " + remaining.toFixed(1) + "s");
+        break;
+    }
+  }
+
+  // ─── Main Render ──────────────────────────────────────────
+  function render() {
+    // Clear with background color
+    ctx.fillStyle = "#0a0a1a";
+    ctx.fillRect(0, 0, W, H);
+
+    drawStarfield();
+    drawAsteroids();
+    drawProjectiles();
+    drawParticles();
+    drawShip();
+    drawHUD();
+
+    if (state.status !== "playing") {
+      drawStatusOverlay();
+    }
+  }
+
+  // ─── Game Loop ──────────────────────────────────────────────
+  var lastTime = performance.now();
+  var paused = false;
+
+  function gameLoop(timestamp) {
+    requestAnimationFrame(gameLoop);
+
+    if (paused) return;
+
+    // Delta time calculation (for future use — currently per-frame physics as specified)
+    var dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Restart with R key — always active, even during game over screens
+    if (pressedKeys["r"] || pressedKeys["R"]) {
+      resetGame(true);
+      pressedKeys["r"] = false;
+      pressedKeys["R"] = false;
+    }
+
+    updateShip();
+    updateProjectiles();
+    updateAsteroids();
+    updateParticles();
+    checkCollisions();
+    checkLevelComplete();
+    render();
+  }
+
+  // ─── Page Visibility API (pause/resume) ──────────────────────
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      paused = true;
+    } else {
+      paused = false;
+      lastTime = performance.now(); // reset to avoid large delta on resume
+    }
+  });
+
+  // ─── Initialize & Start ──────────────────────────────────────
+  resetGame(true);
+  requestAnimationFrame(gameLoop);
+
+})();
+</script>
+</body>
+</html>
