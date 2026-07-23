@@ -10,10 +10,1086 @@
   </style>
 </head>
 <body>
-  <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 6 projects</nav></header>
+  <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 8 projects</nav></header>
   <main class="shell">
     <section class="hero"><span class="kicker">An evolving archive</span><h1>Made for the <em>joy</em> of making.</h1><p>A growing collection of experiments, useful little tools, and things made just because they seemed worth making.</p></section>
-    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">06 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">06 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html HISTORY.md # Space Invaders — Development History
+    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">08 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">08 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/asteroid-clone gemma-4-12-b-qat.html gemma-4-12-b-qat.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+    &lt;title&gt;Asteroids Game&lt;/title&gt;
+    &lt;style&gt;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: &#39;Courier New&#39;, Courier, monospace;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: black;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;canvas id=&quot;gameCanvas&quot; width=&quot;800&quot; height=&quot;600&quot;&gt;&lt;/canvas&gt;
+
+    &lt;script&gt;
+        const canvas = document.getElementById(&#39;gameCanvas&#39;);
+        const ctx = canvas.getContext(&#39;2d&#39;);
+
+        // Game Constants &amp; State
+        let score = 0;
+        let level = 1;
+        let isGameOver = false;
+        let friendlyFire = false; // New flag to track cause of game over
+        let gamePaused = false;
+        let bonusEnabled = false;
+        let lastTime = 0;
+        const keysPressed = {};
+
+        // Entities
+        let ship;
+        let asteroids = [];
+        let projectiles = [];
+        let particles = [];
+        let stars = [];
+
+        class Ship {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.rotation = -Math.PI / 2; // Facing up
+                this.radius = 15;
+            }
+
+            update(dt) {
+                if (keysPressed[&#39;ArrowLeft&#39;] || keysPressed[&#39;KeyA&#39;]) this.rotation -= 5 * Math.PI / 180 * dt;
+                if (keysPressed[&#39;ArrowRight&#39;] || keysPressed[&#39;KeyD&#39;]) this.rotation += 5 * Math.PI / 180 * dt;
+
+                if (keysPressed[&#39;ArrowUp&#39;] || keysPressed[&#39;KeyW&#39;]) {
+                    this.velocityX += Math.cos(this.rotation) * 0.3 * dt; // Reverted to original acceleration of 0.3 px/frame^2
+                    this.velocityY += Math.sin(this.rotation) * 0.3 * dt;
+                } else {
+                    this.velocityX *= 0.98;
+                    this.velocityY *= 0.98;
+                }
+
+                const speed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+                if (speed &gt; 8) { // Reverted to original max speed cap of 8 px/frame
+                    this.velocityX = (this.velocityX / speed) * 8;
+                    this.velocityY = (this.velocityY / speed) * 8;
+                }
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Wrap around
+                if (this.x &lt; 0) this.x = canvas.width;
+                else if (this.x &gt; canvas.width) this.x = 0;
+                if (this.y &lt; 0) this.y = canvas.height;
+                else if (this.y &gt; canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Thruster Flame
+                if (keysPressed[&#39;ArrowUp&#39;] || keysPressed[&#39;KeyW&#39;]) {
+                    ctx.fillStyle = &#39;red&#39;;
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 5);
+                    ctx.lineTo(-25, 0);
+                    ctx.lineTo(-10, -5);
+                    ctx.fill();
+                }
+
+                // Ship Body (Elongated triangle 20x30)
+                ctx.fillStyle = &#39;cyan&#39;;
+                ctx.beginPath();
+                ctx.moveTo(15, 0);  // Tip
+                ctx.lineTo(-10, -10); // Back left
+                ctx.lineTo(-10, 10);  // Back right
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.velocityX = vx;
+                this.velocityY = vy;
+                this.distanceTraveled = 0;
+                this.lifeSpan = 1000; // px limit
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.distanceTraveled += Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+
+                if (this.x &lt; 0) this.x = canvas.width;
+                else if (this.x &gt; canvas.width) this.x = 0;
+                if (this.y &lt; 0) this.y = canvas.height;
+                else if (this.y &gt; canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = &#39;yellow&#39;;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Asteroid {
+            constructor(x, y, radius, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.vx = vx;
+                this.vy = vy;
+                this.vertices = [];
+                const numVertices = 8 + Math.floor(Math.random() * 5);
+                for (let i = 0; i &lt; numVertices; i++) {
+                    const angle = (i / numVertices) * Math.PI * 2;
+                    const dist = radius * (0.8 + Math.random() * 0.4);
+                    this.vertices.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x &lt; -this.radius) this.x = canvas.width + this.radius;
+                else if (this.x &gt; canvas.width + this.radius) this.x = -this.radius;
+                if (this.y &lt; -this.radius) this.y = canvas.height + this.radius;
+                else if (this.y &gt; canvas.height + this.radius) this.y = -this.radius;
+            }
+
+            draw() {
+                ctx.strokeStyle = &#39;grey&#39;;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.vertices[0].x, this.y + this.vertices[0].y);
+                for (let i = 1; i &lt; this.vertices.length; i++) {
+                    ctx.lineTo(this.x + this.vertices[i].x, this.y + this.vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            split() {
+                if (this.radius &gt; 15) {
+                    const newRad = this.radius / 1.5;
+                    return [
+                        new Asteroid(this.x, this.y, newRad, this.vx * 1.2, this.vy * 1.2),
+                        new Asteroid(this.x, this.y, newRad, -this.vx * 0.8, -this.vy * 0.8)
+                    ];
+                }
+                return [];
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+                this.lifeSpan = 1.0;
+                this.color = color;
+            }
+
+            update(dt) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.lifeSpan -= dt * 0.5;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.lifeSpan;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 2, 2);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function initGame() {
+            score = 0;
+            level = 1;
+            isGameOver = false;
+            bonusEnabled = false;
+            ship = new Ship();
+            asteroids = [];
+            projectiles = [];
+            particles = [];
+            stars = Array.from({ length: 100 }, () =&gt; ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                opacity: Math.random()
+            }));
+
+            spawnAsteroids(5);
+        }
+
+        function spawnAsteroids(count) {
+            const baseSpeed = 1.5 + (level - 1) * 0.3;
+            for (let i = 0; i &lt; count; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                } while (Math.hypot(x - ship.x, y - ship.y) &lt; 100);
+
+                const radius = 40;
+                const vx = (Math.random() - 0.5) * baseSpeed * 2;
+                const vy = (Math.random() - 0.5) * baseSpeed * 2;
+                asteroids.push(new Asteroid(x, y, radius, vx, vy));
+            }
+        }
+
+        function handleCollisions() {
+            friendlyFire = false; // Reset each frame
+            // Projectile vs Asteroid
+            for (let i = projectiles.length - 1; i &gt;= 0; i--) {
+                const p = projectiles[i];
+                for (let j = asteroids.length - 1; j &gt;= 0; j--) {
+                    const a = asteroids[j];
+                    if (Math.hypot(p.x - a.x, p.y - a.y) &lt; a.radius) {
+                        // Hit!
+                        createExplosion(a.x, a.y, &#39;orange&#39;);
+                        const newAsteroids = a.split();
+                        asteroids.splice(j, 1);
+                        projectiles.splice(i, 1);
+                        score += Math.floor(a.radius);
+                        if (newAsteroids.length &gt; 0) {
+                            asteroids.push(...newAsteroids);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Ship vs Asteroid
+            for (let a of asteroids) {
+                if (Math.hypot(ship.x - a.x, ship.y - a.y) &lt; a.radius + ship.radius * 0.8) {
+                    isGameOver = true;
+                    friendlyFire = false; // Ship hit by asteroid is standard Game Over
+                    document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid red&#39;;
+                }
+            }
+
+            // Projectile vs Ship (Friendly Fire)
+            for (let p of projectiles) {
+                if (Math.hypot(p.x - ship.x, p.y - ship.y) &lt; ship.radius + 5 &amp;&amp; p.distanceTraveled &gt; 100) {
+                    isGameOver = true;
+                    friendlyFire = true; // Projectile hit own ship is Friendly Fire
+                    document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid red&#39;;
+                }
+            }
+
+            if (asteroids.length === 0 &amp;&amp; !isGameOver) {
+                level++;
+                spawnAsteroids(5 + (level - 1) * 2);
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i &lt; 8; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function update(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 16 === 0 ? 1 : (timestamp - lastTime) / 16; // Normalize to ~60fps steps if needed, but requirements say use delta time.
+            // Actually let&#39;s just use a standard dt calculation:
+            const realDt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (!gamePaused &amp;&amp; !isGameOver) {
+                ship.update(realDt * 60); // Scale to &quot;per frame&quot; logic if needed, but requirements say use delta time for stable movement.
+                // Let&#39;s stick to the requirement: &quot;Use requestAnimationFrame with delta time for stable movement.&quot;
+
+                projectiles.forEach((p, i) =&gt; {
+                    p.update();
+                    if (p.distanceTraveled &gt; 1000) projectiles.splice(i, 1);
+                });
+
+                asteroids.forEach(a =&gt; a.update());
+                particles.forEach((p, i) =&gt; {
+                    p.update(realDt * 60);
+                    if (p.lifeSpan &lt;= 0) particles.splice(i, 1);
+                });
+
+                handleCollisions();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.fillStyle = &#39;black&#39;;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            stars.forEach(s =&gt; {
+                ctx.globalAlpha = s.opacity;
+                ctx.fillStyle = &#39;white&#39;;
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+            ctx.globalAlpha = 1.0;
+
+            particles.forEach(p =&gt; p.draw());
+            projectiles.forEach(p =&gt; p.draw());
+            asteroids.forEach(a =&gt; a.draw());
+            ship.draw();
+
+            // HUD
+            ctx.fillStyle = &#39;white&#39;;
+            ctx.font = &#39;16px Courier New&#39;;
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.fillText(`Level: ${level}`, 20, 50);
+            
+            if (!bonusEnabled) {
+                ctx.fillText(`Projectiles: ${projectiles.length}/3`, 20, 70);
+            } else {
+                ctx.fillStyle = &#39;yellow&#39;;
+                ctx.fillText(`BONUS: INFINITE PROJECTILES`, 20, 70);
+            }
+
+            if (isGameOver) {
+                ctx.fillStyle = &#39;red&#39;;
+                ctx.textAlign = &#39;center&#39;;
+                const msg = friendlyFire ? &quot;FRIENDLY FIRE! - Press R to Restart&quot; : &quot;GAME OVER - Press R to Restart&quot;;
+                ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+            }
+
+            ctx.textAlign = &#39;left&#39;; // Reset
+        }
+
+        window.addEventListener(&#39;keydown&#39;, e =&gt; {
+            keysPressed[e.code] = true;
+            if (e.code === &#39;Space&#39;) {
+                const canFire = !bonusEnabled || projectiles.length &lt; 3; // Changed from &amp;&amp; to || for Infinite Projectiles bonus
+                if (canFire) {
+                    // Projectile initial velocity equals the ship&#39;s current velocity plus a value that is 1.3x the max speed of the ship.
+                    // Max ship speed is 8 px/frame, so base projectile velocity should be 8 * 1.3 = 10.4 px/frame.
+                    const baseVx = Math.cos(ship.rotation) * 10.4;
+                    const baseVy = Math.sin(ship.rotation) * 10.4;
+                    projectiles.push(new Projectile(ship.x, ship.y, baseVx + ship.velocityX, baseVy + ship.velocityY));
+                }
+            }
+            if (e.code === &#39;KeyR&#39; &amp;&amp; isGameOver) {
+                initGame();
+                document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid #333&#39;;
+            }
+            if (e.code === &#39;KeyB&#39;) {
+                bonusEnabled = !bonusEnabled;
+            }
+        });
+
+        window.addEventListener(&#39;keyup&#39;, e =&gt; keysPressed[e.code] = false);
+        document.addEventListener(&#39;visibilitychange&#39;, () =&gt; gamePaused = document.hidden);
+
+        initGame();
+        requestAnimationFrame(update);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+&lt;title&gt;Asteroids&lt;/title&gt;
+&lt;style&gt;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #0a0a1a;
+    font-family: monospace;
+  }
+  h1 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    letter-spacing: 4px;
+    font-weight: normal;
+  }
+  canvas {
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    object-fit: contain;
+    border: 1px solid #333;
+  }
+  .controls-hint {
+    color: #666666;
+    font-size: 0.85rem;
+    margin-top: 10px;
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;Asteroids&lt;/h1&gt;
+&lt;canvas id=&quot;game&quot; width=&quot;800&quot; height=&quot;600&quot;&gt;&lt;/canvas&gt;
+&lt;p class=&quot;controls-hint&quot;&gt;← → / A D Rotate · ↑ / W Thrust · Space Fire · R Restart · B Bonus&lt;/p&gt;
+
+&lt;script&gt;
+(function () {
+  &quot;use strict&quot;;
+
+  // ─── Constants ──────────────────────────────────────────────
+  const W = 800, H = 600;
+  const ROT_SPEED = 5 * Math.PI / 180;   // 5 degrees/frame in radians
+  const THRUST_ACCEL = 0.3;               // px/frame²
+  const MAX_SPEED = 8;                    // px/frame
+  const FRICTION = 0.98;                  // multiplier when no thrust
+  const PROJ_MAX_DIST = 1000;             // pixels before despawn
+  const PROJ_SPEED_BONUS = 6;             // extra speed in facing dir
+  const MAX_PROJECTILES = 3;
+  const SHIP_COLLISION_R = 15;            // px radius for ship collision circle
+  const ASTEROID_START_COUNT = 5;
+  const ASTEROID_LARGE_RADIUS = 40;
+  const ASTEROID_SPLIT_DIVISOR = 1.5;
+  const ASTEROID_DESTROY_THRESHOLD = 15;  // px — below this, destroy without split
+  const PARTICLE_COLORS = [&quot;#ff4444&quot;, &quot;#ffaa00&quot;, &quot;#ffff00&quot;, &quot;#44ff44&quot;, &quot;#4444ff&quot;];
+
+  // ─── Canvas &amp; Context ──────────────────────────────────────
+  const canvas = document.getElementById(&quot;game&quot;);
+  const ctx = canvas.getContext(&quot;2d&quot;);
+
+  // ─── Input Manager ─────────────────────────────────────────
+  const pressedKeys = {};
+
+  var gameKeyMap = {
+    &quot;ArrowLeft&quot;: &quot;left&quot;,
+    &quot;ArrowRight&quot;: &quot;right&quot;,
+    &quot;ArrowUp&quot;: &quot;up&quot;,
+    &quot;a&quot;: &quot;left&quot;, &quot;A&quot;: &quot;left&quot;,
+    &quot;d&quot;: &quot;right&quot;, &quot;D&quot;: &quot;right&quot;,
+    &quot;w&quot;: &quot;up&quot;, &quot;W&quot;: &quot;up&quot;,
+    &quot; &quot;: &quot;fire&quot;,
+    &quot;b&quot;: &quot;bonus&quot;, &quot;B&quot;: &quot;bonus&quot;,
+    &quot;r&quot;: &quot;restart&quot;, &quot;R&quot;: &quot;restart&quot;
+  };
+
+  // Use capture phase so we catch keys before browser default processing (Space scrolls)
+  document.addEventListener(&quot;keydown&quot;, function (e) {
+    var action = gameKeyMap[e.key];
+    if (action) e.preventDefault();
+    pressedKeys[e.key] = true;
+  }, { capture: true });
+
+  window.addEventListener(&quot;keyup&quot;, function (e) {
+    pressedKeys[e.key] = false;
+  });
+
+  // Ensure canvas captures keyboard focus on click and auto-focuses on load
+  canvas.setAttribute(&quot;tabindex&quot;, &quot;0&quot;);
+  canvas.focus();
+
+  // ─── Starfield (generated once) ─────────────────────────────
+  var stars = [];
+  for (var i = 0; i &lt; 150; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      alpha: 0.1 + Math.random() * 0.4
+    });
+  }
+
+  // ─── Game State ──────────────────────────────────────────────
+  var state = {};
+
+  function resetGame(fullRestart) {
+    if (fullRestart === undefined) fullRestart = true;
+    state.ship = createShip(W / 2, H / 2);
+    state.projectiles = [];
+    state.asteroids = [];
+    state.particles = [];
+    state.score = 0;
+    state.level = 1;
+    state.arcShot = false;
+    if (fullRestart) {
+      state.status = &quot;playing&quot;; // playing, gameover, friendlyfire, levelcomplete
+      state.completeTimer = 0;
+    } else {
+      state.status = &quot;playing&quot;;
+      state.completeTimer = 0;
+    }
+    spawnLevelAsteroids();
+  }
+
+  function nextLevel() {
+    state.level++;
+    state.projectiles = [];
+    state.particles = [];
+    state.ship.alive = true;
+    state.status = &quot;playing&quot;;
+    state.completeTimer = 0;
+    // Reset ship to center for new level
+    state.ship.x = W / 2;
+    state.ship.y = H / 2;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    spawnLevelAsteroids();
+  }
+
+  function spawnLevelAsteroids() {
+    var count = ASTEROID_START_COUNT + (state.level - 1) * 2;
+    var speedMult = 1 + (state.level - 1) * 0.3 / 2; // base ~2, add 0.3 per level
+    for (var i = 0; i &lt; count; i++) {
+      spawnAsteroidAway(ASTEROID_LARGE_RADIUS, speedMult);
+    }
+  }
+
+  function spawnAsteroidAway(radius, speedMult) {
+    var x, y, dist;
+    do {
+      x = Math.random() * W;
+      y = Math.random() * H;
+      dx = x - state.ship.x;
+      dy = y - state.ship.y;
+      // Handle wrapping distance for placement check
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+      dist = Math.sqrt(dx * dx + dy * dy);
+    } while (dist &lt; 150);
+
+    var angle = Math.random() * Math.PI * 2;
+    var speed = (1.5 + Math.random()) * (speedMult || 1); // 1.5-2.5 base, scaled by level
+    state.asteroids.push(createAsteroid(x, y, radius, Math.cos(angle) * speed, Math.sin(angle) * speed));
+  }
+
+  // ─── Entity Factories ──────────────────────────────────────
+  function createShip(x, y) {
+    return { x: x || W / 2, y: y || H / 2, angle: 0, vx: 0, vy: 0, alive: true };
+  }
+
+  function createAsteroid(x, y, radius, vx, vy) {
+    var verts = [];
+    var nVerts = 8 + Math.floor(Math.random() * 6); // 8-13 vertices
+    for (var i = 0; i &lt; nVerts; i++) {
+      var a = (i / nVerts) * Math.PI * 2;
+      var r = radius * (0.75 + Math.random() * 0.5); // ±25% perturbation
+      verts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+    }
+    return { x: x, y: y, vx: vx || 0, vy: vy || 0, radius: radius, vertices: verts };
+  }
+
+  function spawnParticles(x, y, count) {
+    for (var i = 0; i &lt; count; i++) {
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 0.5 + Math.random() * 3.5; // 0.5-4 px/frame
+      var maxLife = 20 + Math.floor(Math.random() * 21); // 20-40 frames
+      state.particles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: maxLife,
+        maxLife: maxLife,
+        color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+        size: 1 + Math.random() * 2 // 1-3px radius
+      });
+    }
+  }
+
+  var dx, dy; // reused for distance calcs
+
+  // ─── Update Functions ──────────────────────────────────────
+  function updateShip() {
+    // Rotation (5 degrees/frame = ROT_SPEED radians)
+    if (pressedKeys[&quot;ArrowLeft&quot;] || pressedKeys[&quot;a&quot;] || pressedKeys[&quot;A&quot;]) state.ship.angle -= ROT_SPEED;
+    if (pressedKeys[&quot;ArrowRight&quot;] || pressedKeys[&quot;d&quot;] || pressedKeys[&quot;D&quot;]) state.ship.angle += ROT_SPEED;
+
+    // Thrust
+    var thrusting = !!(pressedKeys[&quot;ArrowUp&quot;] || pressedKeys[&quot;w&quot;] || pressedKeys[&quot;W&quot;]);
+
+    // Thrust direction matches the ship&#39;s tip via transformPoint rotation
+    var thrustDirX =  Math.sin(state.ship.angle);
+    var thrustDirY = -Math.cos(state.ship.angle);
+
+    if (!state.ship.alive) return;
+    if (thrusting) {
+      state.ship.vx += thrustDirX * THRUST_ACCEL;
+      state.ship.vy += thrustDirY * THRUST_ACCEL;
+    } else {
+      // Friction when not thrusting
+      state.ship.vx *= FRICTION;
+      state.ship.vy *= FRICTION;
+    }
+
+    // Clamp speed to MAX_SPEED
+    var mag = Math.sqrt(state.ship.vx * state.ship.vx + state.ship.vy * state.ship.vy);
+    if (mag &gt; MAX_SPEED) {
+      state.ship.vx = (state.ship.vx / mag) * MAX_SPEED;
+      state.ship.vy = (state.ship.vy / mag) * MAX_SPEED;
+    }
+
+    // Move
+    state.ship.x += state.ship.vx;
+    state.ship.y += state.ship.vy;
+
+    // Wrap around edges
+    if (state.ship.x &lt; -20) state.ship.x = W + 20;
+    else if (state.ship.x &gt; W + 20) state.ship.x = -20;
+    if (state.ship.y &lt; -20) state.ship.y = H + 20;
+    else if (state.ship.y &gt; H + 20) state.ship.y = -20;
+
+    // Fire projectile on Space press
+    if (pressedKeys[&quot; &quot;]) {
+      fireProjectile();
+      pressedKeys[&quot; &quot;] = false; // debounce — one shot per keypress
+    }
+
+    // Toggle bonus with B key
+    if (pressedKeys[&quot;b&quot;] || pressedKeys[&quot;B&quot;]) {
+      state.arcShot = !state.arcShot;
+      pressedKeys[&quot;b&quot;] = false;
+      pressedKeys[&quot;B&quot;] = false;
+    }
+  }
+
+  function fireProjectile() {
+    var currentCount = 0;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) currentCount++;
+    }
+
+    // Tip direction matches transformPoint rotation for consistency with thrust
+    var tipDirX  =  Math.sin(state.ship.angle);
+    var tipDirY  = -Math.cos(state.ship.angle);
+    var tipWorldX = state.ship.x + tipDirX * 15;
+    var tipWorldY = state.ship.y + tipDirY * 15;
+
+    if (state.arcShot) {
+      // Arc shot: fire 3 projectiles at angle-15°, angle, angle+15° using same rotation as ship tip
+      for (var i = -1; i &lt;= 1; i++) {
+        var a = state.ship.angle + i * 15 * Math.PI / 180;
+        state.projectiles.push({
+          x: tipWorldX, y: tipWorldY,
+          vx: state.ship.vx + Math.sin(a) * PROJ_SPEED_BONUS,
+          vy: state.ship.vy - Math.cos(a) * PROJ_SPEED_BONUS,
+          distanceTraveled: 0,
+          alive: true
+        });
+      }
+    } else {
+      if (currentCount &gt;= MAX_PROJECTILES) return;
+
+      state.projectiles.push({
+        x: tipWorldX, y: tipWorldY,
+        vx: state.ship.vx + tipDirX * PROJ_SPEED_BONUS,
+        vy: state.ship.vy + tipDirY * PROJ_SPEED_BONUS,
+        distanceTraveled: 0,
+        alive: true
+      });
+    }
+  }
+
+  function updateProjectiles() {
+    for (var i = state.projectiles.length - 1; i &gt;= 0; i--) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      // Move and track distance
+      p.x += p.vx;
+      p.y += p.vy;
+      p.distanceTraveled += Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+
+      // Wrap around edges
+      if (p.x &lt; 0) p.x = W; else if (p.x &gt; W) p.x = 0;
+      if (p.y &lt; 0) p.y = H; else if (p.y &gt; H) p.y = 0;
+
+      // Remove if exceeded max distance
+      if (p.distanceTraveled &gt;= PROJ_MAX_DIST) {
+        p.alive = false;
+      }
+    }
+    // Clean up dead projectiles periodically
+    state.projectiles = state.projectiles.filter(function (p) { return p.alive; });
+  }
+
+  function updateAsteroids() {
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      a.x += a.vx;
+      a.y += a.vy;
+
+      // Wrap around edges
+      if (a.x &lt; -a.radius) a.x = W + a.radius;
+      else if (a.x &gt; W + a.radius) a.x = -a.radius;
+      if (a.y &lt; -a.radius) a.y = H + a.radius;
+      else if (a.y &gt; H + a.radius) a.y = -a.radius;
+    }
+  }
+
+  function updateParticles() {
+    for (var i = state.particles.length - 1; i &gt;= 0; i--) {
+      var p = state.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+      if (p.life &lt;= 0) {
+        state.particles.splice(i, 1);
+      }
+    }
+  }
+
+  // ─── Collision Detection ──────────────────────────────────
+  function checkCollisions() {
+    if (!state.ship.alive || state.status !== &quot;playing&quot;) return;
+
+    // Ship vs asteroids (circle-circle)
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      dx = a.x - state.ship.x;
+      dy = a.y - state.ship.y;
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist &lt; SHIP_COLLISION_R + a.radius) {
+        state.ship.alive = false;
+        state.status = &quot;gameover&quot;;
+        return;
+      }
+    }
+
+    // Projectiles vs asteroids (point-in-circle)
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      for (var j = 0; j &lt; state.asteroids.length; j++) {
+        var a = state.asteroids[j];
+        dx = a.x - p.x;
+        dy = a.y - p.y;
+        // Handle wrapping distance check
+        if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+        if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist &lt; a.radius) {
+          p.alive = false;
+          // Score: larger asteroids worth more points
+          state.score += Math.round(a.radius);
+
+          // Spawn particles at collision point
+          spawnParticles(p.x, p.y, 12);
+
+          // Split or destroy asteroid
+          if (a.radius &gt; ASTEROID_DESTROY_THRESHOLD) {
+            var newRadius = a.radius / ASTEROID_SPLIT_DIVISOR;
+            var speedBoost = 1.2;
+            var numPieces = 2 + Math.floor(Math.random() * 2); // 2-3 pieces
+
+            for (var k = 0; k &lt; numPieces; k++) {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = Math.sqrt(a.vx * a.vx + a.vy * a.vy) * speedBoost || (1.5 + Math.random()) * speedBoost;
+              state.asteroids.push(createAsteroid(
+                a.x, a.y, newRadius,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+              ));
+            }
+          }
+
+          // Remove the hit asteroid
+          state.asteroids.splice(j, 1);
+          break;
+        }
+      }
+    }
+
+    // Friendly fire: projectiles vs ship (point-in-circle with ~15px radius)
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive || !state.ship.alive) continue;
+
+      dx = state.ship.x - p.x;
+      dy = state.ship.y - p.y;
+      // Handle wrapping distance check for friendly fire too
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist &lt; SHIP_COLLISION_R) {
+        state.ship.alive = false;
+        state.status = &quot;friendlyfire&quot;;
+        return;
+      }
+    }
+
+    // Check level complete: all asteroids cleared
+    if (state.asteroids.length === 0 &amp;&amp; state.status === &quot;playing&quot;) {
+      state.status = &quot;levelcomplete&quot;;
+      state.completeTimer = Date.now();
+    }
+  }
+
+  function checkLevelComplete() {
+    if (state.status !== &quot;levelcomplete&quot;) return;
+    var elapsed = Date.now() - state.completeTimer;
+    if (elapsed &gt;= 2000) {
+      nextLevel();
+    }
+  }
+
+  // ─── Render Functions ──────────────────────────────────────
+  function drawStarfield() {
+    ctx.fillStyle = &quot;#ffffff&quot;;
+    for (var i = 0; i &lt; stars.length; i++) {
+      var s = stars[i];
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawShip() {
+    if (!state.ship.alive) return;
+
+    var cos = Math.cos(state.ship.angle);
+    var sin = Math.sin(state.ship.angle);
+
+    // Ship vertices in local space: tip (0,-15), left (-10,12), right (10,12)
+    // Transform to world space using rotation matrix around ship center
+    function transformPoint(lx, ly) {
+      return {
+        x: state.ship.x + lx * cos - ly * sin,
+        y: state.ship.y + lx * sin + ly * cos
+      };
+    }
+
+    var tip = transformPoint(0, -15);
+    var left = transformPoint(-10, 12);
+    var right = transformPoint(10, 12);
+
+    ctx.strokeStyle = &quot;#ffffff&quot;;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Thruster flame when thrusting
+    if (pressedKeys[&quot;ArrowUp&quot;] || pressedKeys[&quot;w&quot;] || pressedKeys[&quot;W&quot;]) {
+      var tailCenter = transformPoint(0, 15);
+      var tailLeft = transformPoint(-6, 24);
+      var tailRight = transformPoint(6, 24);
+
+      ctx.fillStyle = &quot;#ff4422&quot;;
+      ctx.beginPath();
+      ctx.moveTo(tailCenter.x, tailCenter.y);
+      ctx.lineTo(tailLeft.x, tailLeft.y);
+      ctx.lineTo(tailRight.x, tailRight.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawAsteroids() {
+    ctx.strokeStyle = &quot;#8b7355&quot;;
+    ctx.lineWidth = 1.5;
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      ctx.beginPath();
+      for (var j = 0; j &lt; a.vertices.length; j++) {
+        var vx = a.x + a.vertices[j].x;
+        var vy = a.y + a.vertices[j].y;
+        if (j === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  function drawProjectiles() {
+    ctx.fillStyle = &quot;#ff6b6b&quot;;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    for (var i = 0; i &lt; state.particles.length; i++) {
+      var p = state.particles[i];
+      var alpha = p.life / p.maxLife;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawHUD() {
+    // Score and Level (top-left)
+    ctx.textAlign = &quot;left&quot;;
+    ctx.font = &quot;16px monospace&quot;;
+    ctx.fillStyle = &quot;#aaaaaa&quot;;
+    ctx.fillText(&quot;SCORE: &quot; + state.score, 15, 28);
+    ctx.fillText(&quot;LEVEL: &quot; + state.level, 15, 48);
+
+    // Projectile count (top-right)
+    var aliveCount = 0;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) aliveCount++;
+    }
+    ctx.textAlign = &quot;right&quot;;
+    ctx.font = &quot;14px monospace&quot;;
+    ctx.fillStyle = &quot;#aaaaaa&quot;;
+    ctx.fillText(&quot;PROJECTILES: &quot; + aliveCount + &quot;/3&quot;, W - 15, 28);
+
+    // Bonus indicator (top-right below projectile count)
+    if (state.arcShot) {
+      ctx.font = &quot;bold 14px monospace&quot;;
+      ctx.fillStyle = &quot;#ffaa00&quot;;
+      ctx.fillText(&quot;ARC SHOT: ON&quot;, W - 15, 46);
+    }
+  }
+
+  function drawOverlay(titleText, titleColor, subtitleText) {
+    // Semi-transparent dark background
+    ctx.fillStyle = &quot;rgba(0, 0, 0, 0.7)&quot;;
+    ctx.fillRect(0, 0, W, H);
+
+    // Title text (centered)
+    ctx.textAlign = &quot;center&quot;;
+    ctx.font = &quot;36px monospace bold&quot;;
+    ctx.fillStyle = titleColor;
+    ctx.fillText(titleText, W / 2, 290);
+
+    // Subtitle text
+    if (subtitleText) {
+      ctx.font = &quot;20px monospace&quot;;
+      ctx.fillStyle = &quot;#aaaaaa&quot;;
+      ctx.fillText(subtitleText, W / 2, 335);
+    }
+  }
+
+  function drawStatusOverlay() {
+    switch (state.status) {
+      case &quot;gameover&quot;:
+        drawOverlay(&quot;GAME OVER&quot;, &quot;#ffffff&quot;, &quot;Press R to Restart&quot;);
+        break;
+      case &quot;friendlyfire&quot;:
+        drawOverlay(&quot;FRIENDLY FIRE!&quot;, &quot;#ff6b6b&quot;, &quot;Press R to Restart&quot;);
+        break;
+      case &quot;levelcomplete&quot;:
+        var remaining = Math.max(0, 2 - (Date.now() - state.completeTimer) / 1000);
+        drawOverlay(&quot;LEVEL COMPLETE!&quot;, &quot;#44ff44&quot;, &quot;Next level in &quot; + remaining.toFixed(1) + &quot;s&quot;);
+        break;
+    }
+  }
+
+  // ─── Main Render ──────────────────────────────────────────
+  function render() {
+    // Clear with background color
+    ctx.fillStyle = &quot;#0a0a1a&quot;;
+    ctx.fillRect(0, 0, W, H);
+
+    drawStarfield();
+    drawAsteroids();
+    drawProjectiles();
+    drawParticles();
+    drawShip();
+    drawHUD();
+
+    if (state.status !== &quot;playing&quot;) {
+      drawStatusOverlay();
+    }
+  }
+
+  // ─── Game Loop ──────────────────────────────────────────────
+  var lastTime = performance.now();
+  var paused = false;
+
+  function gameLoop(timestamp) {
+    requestAnimationFrame(gameLoop);
+
+    if (paused) return;
+
+    // Delta time calculation (for future use — currently per-frame physics as specified)
+    var dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Restart with R key — always active, even during game over screens
+    if (pressedKeys[&quot;r&quot;] || pressedKeys[&quot;R&quot;]) {
+      resetGame(true);
+      pressedKeys[&quot;r&quot;] = false;
+      pressedKeys[&quot;R&quot;] = false;
+    }
+
+    updateShip();
+    updateProjectiles();
+    updateAsteroids();
+    updateParticles();
+    checkCollisions();
+    checkLevelComplete();
+    render();
+  }
+
+  // ─── Page Visibility API (pause/resume) ──────────────────────
+  document.addEventListener(&quot;visibilitychange&quot;, function () {
+    if (document.hidden) {
+      paused = true;
+    } else {
+      paused = false;
+      lastTime = performance.now(); // reset to avoid large delta on resume
+    }
+  });
+
+  // ─── Initialize &amp; Start ──────────────────────────────────────
+  resetGame(true);
+  requestAnimationFrame(gameLoop);
+
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ {}" href="vibe-coding/games/asteroid-clone/gemma-4-12-b-qat.html" style="--delay: 0ms">
+      <div class="card-art"><iframe src="vibe-coding/games/asteroid-clone/gemma-4-12-b-qat.html" title="Preview of Gemma 4 12 B Qat" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
+      <div class="card-copy"><span class="eyebrow">Asteroid Clone</span><h2>Gemma 4 12 B Qat</h2><p>A small work in progress.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
+    </a>
+<a class="project-card" data-search="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html HISTORY.md # Space Invaders — Development History
 
 ## Iterative Development Timeline
 
@@ -890,9 +1966,1085 @@ footer {
         font-size: 0.7rem;
     }
 }
- timeline.svg &lt;svg id=&quot;my-svg&quot; width=&quot;100%&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot; xmlns:xlink=&quot;http://www.w3.org/1999/xlink&quot; class=&quot;flowchart&quot; style=&quot;max-width: 276px; background-color: transparent;&quot; viewBox=&quot;0 0 276 838&quot; role=&quot;graphics-document document&quot; aria-roledescription=&quot;flowchart-v2&quot;&gt;&lt;style&gt;#my-svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#552222;}#my-svg .error-text{fill:#552222;stroke:#552222;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:#333333;stroke:#333333;}#my-svg .marker.cross{stroke:#333333;}#my-svg svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;color:#333;}#my-svg .cluster-label text{fill:#333;}#my-svg .cluster-label span{color:#333;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#333;color:#333;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#my-svg .arrowheadPath{fill:#333333;}#my-svg .edgePath .path{stroke:#333333;stroke-width:1px;}#my-svg .flowchart-link{stroke:#333333;fill:none;}#my-svg .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#my-svg .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#my-svg .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#my-svg .cluster text{fill:#333;}#my-svg .cluster span{color:#333;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#my-svg .icon-shape .label rect,#my-svg .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg .node .neo-node{stroke:#9370DB;}#my-svg [data-look=&quot;neo&quot;].node rect,#my-svg [data-look=&quot;neo&quot;].cluster rect,#my-svg [data-look=&quot;neo&quot;].node polygon{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node path{stroke:#9370DB;stroke-width:1px;}#my-svg [data-look=&quot;neo&quot;].node .outer-path{filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node .neo-line path{stroke:#9370DB;filter:none;}#my-svg [data-look=&quot;neo&quot;].node circle{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node circle .state-start{fill:#000000;}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon{fill:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon-neo path{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg :root{--mermaid-font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;}#my-svg .create&amp;gt;*{fill:#4ecdc4!important;stroke:#1a9c9e!important;color:#000!important;}#my-svg .create span{fill:#4ecdc4!important;stroke:#1a9c9e!important;color:#000!important;}#my-svg .create tspan{fill:#000!important;}#my-svg .tweak&amp;gt;*{fill:#feca57!important;stroke:#c7a600!important;color:#000!important;}#my-svg .tweak span{fill:#feca57!important;stroke:#c7a600!important;color:#000!important;}#my-svg .tweak tspan{fill:#000!important;}#my-svg .balance&amp;gt;*{fill:#ff6b6b!important;stroke:#c23616!important;color:#fff!important;}#my-svg .balance span{fill:#ff6b6b!important;stroke:#c23616!important;color:#fff!important;}#my-svg .balance tspan{fill:#fff!important;}#my-svg .design&amp;gt;*{fill:#a29bfe!important;stroke:#6c5ce7!important;color:#fff!important;}#my-svg .design span{fill:#a29bfe!important;stroke:#6c5ce7!important;color:#fff!important;}#my-svg .design tspan{fill:#fff!important;}#my-svg .bugfix&amp;gt;*{fill:#fd79a8!important;stroke:#e84393!important;color:#fff!important;}#my-svg .bugfix span{fill:#fd79a8!important;stroke:#e84393!important;color:#fff!important;}#my-svg .bugfix tspan{fill:#fff!important;}&lt;/style&gt;&lt;g&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointEnd&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;5&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 0 L 10 5 L 0 10 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointStart&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;4.5&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 5 L 10 10 L 10 0 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointEnd-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 11.5 14&quot; refX=&quot;11.5&quot; refY=&quot;7&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;10.5&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 0 L 11.5 7 L 0 14 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointStart-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 11.5 14&quot; refX=&quot;1&quot; refY=&quot;7&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11.5&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;polygon points=&quot;0,7 11.5,14 11.5,0&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleEnd&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;11&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleStart&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;-1&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleEnd-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refY=&quot;5&quot; refX=&quot;12.25&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;14&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleStart-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;-2&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;14&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossEnd&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 11 11&quot; refX=&quot;12&quot; refY=&quot;5.2&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 l 9,9 M 10,1 l -9,9&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossStart&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 11 11&quot; refX=&quot;-1&quot; refY=&quot;5.2&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 l 9,9 M 10,1 l -9,9&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossEnd-margin&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 15 15&quot; refX=&quot;17.7&quot; refY=&quot;7.5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;12&quot; markerHeight=&quot;12&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 L 14,14 M 1,14 L 14,1&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2.5;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossStart-margin&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 15 15&quot; refX=&quot;-3.5&quot; refY=&quot;7.5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;12&quot; markerHeight=&quot;12&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 L 14,14 M 1,14 L 14,1&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2.5; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;g class=&quot;root&quot;&gt;&lt;g class=&quot;clusters&quot;/&gt;&lt;g class=&quot;edgePaths&quot;&gt;&lt;path d=&quot;M138,62L138,66.167C138,70.333,138,78.667,138,86.333C138,94,138,101,138,104.5L138,108&quot; id=&quot;my-svg-L_A_B_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_A_B_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo2Mn0seyJ4IjoxMzgsInkiOjg3fSx7IngiOjEzOCwieSI6MTEyfV0=&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,190L138,194.167C138,198.333,138,206.667,138,214.333C138,222,138,229,138,232.5L138,236&quot; id=&quot;my-svg-L_B_C_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_B_C_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5IjoxOTB9LHsieCI6MTM4LCJ5IjoyMTV9LHsieCI6MTM4LCJ5IjoyNDB9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,318L138,322.167C138,326.333,138,334.667,138,342.333C138,350,138,357,138,360.5L138,364&quot; id=&quot;my-svg-L_C_D_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_C_D_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5IjozMTh9LHsieCI6MTM4LCJ5IjozNDN9LHsieCI6MTM4LCJ5IjozNjh9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,446L138,450.167C138,454.333,138,462.667,138,470.333C138,478,138,485,138,488.5L138,492&quot; id=&quot;my-svg-L_D_E_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_D_E_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo0NDZ9LHsieCI6MTM4LCJ5Ijo0NzF9LHsieCI6MTM4LCJ5Ijo0OTZ9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,574L138,578.167C138,582.333,138,590.667,138,598.333C138,606,138,613,138,616.5L138,620&quot; id=&quot;my-svg-L_E_F_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_E_F_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo1NzR9LHsieCI6MTM4LCJ5Ijo1OTl9LHsieCI6MTM4LCJ5Ijo2MjR9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,702L138,706.167C138,710.333,138,718.667,138,726.333C138,734,138,741,138,744.5L138,748&quot; id=&quot;my-svg-L_F_G_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_F_G_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo3MDJ9LHsieCI6MTM4LCJ5Ijo3Mjd9LHsieCI6MTM4LCJ5Ijo3NTJ9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabels&quot;&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_A_B_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_B_C_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_C_D_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_D_E_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_E_F_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_F_G_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;nodes&quot;&gt;&lt;g class=&quot;node default create&quot; id=&quot;my-svg-flowchart-A-0&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 35)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#4ecdc4 !important;stroke:#1a9c9e !important&quot; x=&quot;-119.3203125&quot; y=&quot;-27&quot; width=&quot;238.640625&quot; height=&quot;54&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#000 !important&quot; transform=&quot;translate(-89.3203125, -12)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;178.640625&quot; height=&quot;24&quot;&gt;&lt;div style=&quot;color: rgb(0, 0, 0) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#000 !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🚀 Initial Game Creation&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default tweak&quot; id=&quot;my-svg-flowchart-B-1&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 151)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#feca57 !important;stroke:#c7a600 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#000 !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(0, 0, 0) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#000 !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;📐 Canvas &amp;amp; Spacing Adjustments&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default balance&quot; id=&quot;my-svg-flowchart-C-3&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 279)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#ff6b6b !important;stroke:#c23616 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🔫 Reduce Enemy Bullet Frequency&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default balance&quot; id=&quot;my-svg-flowchart-D-5&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 407)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#ff6b6b !important;stroke:#c23616 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🐢 Further Reduce Bullets &amp;amp; Speed&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default design&quot; id=&quot;my-svg-flowchart-E-7&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 535)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#a29bfe !important;stroke:#6c5ce7 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;⚖️ Remove Kill-Based Speed Scaling&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default design&quot; id=&quot;my-svg-flowchart-F-9&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 663)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#a29bfe !important;stroke:#6c5ce7 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;📊 Cap Bullet Rate by Level&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default bugfix&quot; id=&quot;my-svg-flowchart-G-11&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 791)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#fd79a8 !important;stroke:#e84393 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🛠️ Fix Level Transition Bugs&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;defs&gt;&lt;filter id=&quot;my-svg-drop-shadow&quot; height=&quot;130%&quot; width=&quot;130%&quot;&gt;&lt;feDropShadow dx=&quot;4&quot; dy=&quot;4&quot; stdDeviation=&quot;0&quot; flood-opacity=&quot;0.06&quot; flood-color=&quot;#000000&quot;/&gt;&lt;/filter&gt;&lt;/defs&gt;&lt;defs&gt;&lt;filter id=&quot;my-svg-drop-shadow-small&quot; height=&quot;150%&quot; width=&quot;150%&quot;&gt;&lt;feDropShadow dx=&quot;2&quot; dy=&quot;2&quot; stdDeviation=&quot;0&quot; flood-opacity=&quot;0.06&quot; flood-color=&quot;#000000&quot;/&gt;&lt;/filter&gt;&lt;/defs&gt;&lt;/svg&gt; {}" href="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html" style="--delay: 0ms">
+ timeline.svg &lt;svg id=&quot;my-svg&quot; width=&quot;100%&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot; xmlns:xlink=&quot;http://www.w3.org/1999/xlink&quot; class=&quot;flowchart&quot; style=&quot;max-width: 276px; background-color: transparent;&quot; viewBox=&quot;0 0 276 838&quot; role=&quot;graphics-document document&quot; aria-roledescription=&quot;flowchart-v2&quot;&gt;&lt;style&gt;#my-svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#552222;}#my-svg .error-text{fill:#552222;stroke:#552222;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:#333333;stroke:#333333;}#my-svg .marker.cross{stroke:#333333;}#my-svg svg{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:16px;}#my-svg p{margin:0;}#my-svg .label{font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;color:#333;}#my-svg .cluster-label text{fill:#333;}#my-svg .cluster-label span{color:#333;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#333;color:#333;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#my-svg .arrowheadPath{fill:#333333;}#my-svg .edgePath .path{stroke:#333333;stroke-width:1px;}#my-svg .flowchart-link{stroke:#333333;fill:none;}#my-svg .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#my-svg .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#my-svg .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#my-svg .cluster text{fill:#333;}#my-svg .cluster span{color:#333;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#my-svg .icon-shape .label rect,#my-svg .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg .node .neo-node{stroke:#9370DB;}#my-svg [data-look=&quot;neo&quot;].node rect,#my-svg [data-look=&quot;neo&quot;].cluster rect,#my-svg [data-look=&quot;neo&quot;].node polygon{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node path{stroke:#9370DB;stroke-width:1px;}#my-svg [data-look=&quot;neo&quot;].node .outer-path{filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node .neo-line path{stroke:#9370DB;filter:none;}#my-svg [data-look=&quot;neo&quot;].node circle{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].node circle .state-start{fill:#000000;}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon{fill:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg [data-look=&quot;neo&quot;].icon-shape .icon-neo path{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#my-svg :root{--mermaid-font-family:&quot;trebuchet ms&quot;,verdana,arial,sans-serif;}#my-svg .create&amp;gt;*{fill:#4ecdc4!important;stroke:#1a9c9e!important;color:#000!important;}#my-svg .create span{fill:#4ecdc4!important;stroke:#1a9c9e!important;color:#000!important;}#my-svg .create tspan{fill:#000!important;}#my-svg .tweak&amp;gt;*{fill:#feca57!important;stroke:#c7a600!important;color:#000!important;}#my-svg .tweak span{fill:#feca57!important;stroke:#c7a600!important;color:#000!important;}#my-svg .tweak tspan{fill:#000!important;}#my-svg .balance&amp;gt;*{fill:#ff6b6b!important;stroke:#c23616!important;color:#fff!important;}#my-svg .balance span{fill:#ff6b6b!important;stroke:#c23616!important;color:#fff!important;}#my-svg .balance tspan{fill:#fff!important;}#my-svg .design&amp;gt;*{fill:#a29bfe!important;stroke:#6c5ce7!important;color:#fff!important;}#my-svg .design span{fill:#a29bfe!important;stroke:#6c5ce7!important;color:#fff!important;}#my-svg .design tspan{fill:#fff!important;}#my-svg .bugfix&amp;gt;*{fill:#fd79a8!important;stroke:#e84393!important;color:#fff!important;}#my-svg .bugfix span{fill:#fd79a8!important;stroke:#e84393!important;color:#fff!important;}#my-svg .bugfix tspan{fill:#fff!important;}&lt;/style&gt;&lt;g&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointEnd&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;5&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 0 L 10 5 L 0 10 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointStart&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;4.5&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;8&quot; markerHeight=&quot;8&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 5 L 10 10 L 10 0 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointEnd-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 11.5 14&quot; refX=&quot;11.5&quot; refY=&quot;7&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;10.5&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 0 0 L 11.5 7 L 0 14 z&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-pointStart-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 11.5 14&quot; refX=&quot;1&quot; refY=&quot;7&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11.5&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;polygon points=&quot;0,7 11.5,14 11.5,0&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleEnd&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;11&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleStart&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;-1&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 1; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleEnd-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refY=&quot;5&quot; refX=&quot;12.25&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;14&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-circleStart-margin&quot; class=&quot;marker flowchart-v2&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;-2&quot; refY=&quot;5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;14&quot; markerHeight=&quot;14&quot; orient=&quot;auto&quot;&gt;&lt;circle cx=&quot;5&quot; cy=&quot;5&quot; r=&quot;5&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 0; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossEnd&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 11 11&quot; refX=&quot;12&quot; refY=&quot;5.2&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 l 9,9 M 10,1 l -9,9&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossStart&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 11 11&quot; refX=&quot;-1&quot; refY=&quot;5.2&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;11&quot; markerHeight=&quot;11&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 l 9,9 M 10,1 l -9,9&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossEnd-margin&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 15 15&quot; refX=&quot;17.7&quot; refY=&quot;7.5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;12&quot; markerHeight=&quot;12&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 L 14,14 M 1,14 L 14,1&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2.5;&quot;/&gt;&lt;/marker&gt;&lt;marker id=&quot;my-svg_flowchart-v2-crossStart-margin&quot; class=&quot;marker cross flowchart-v2&quot; viewBox=&quot;0 0 15 15&quot; refX=&quot;-3.5&quot; refY=&quot;7.5&quot; markerUnits=&quot;userSpaceOnUse&quot; markerWidth=&quot;12&quot; markerHeight=&quot;12&quot; orient=&quot;auto&quot;&gt;&lt;path d=&quot;M 1,1 L 14,14 M 1,14 L 14,1&quot; class=&quot;arrowMarkerPath&quot; style=&quot;stroke-width: 2.5; stroke-dasharray: 1, 0;&quot;/&gt;&lt;/marker&gt;&lt;g class=&quot;root&quot;&gt;&lt;g class=&quot;clusters&quot;/&gt;&lt;g class=&quot;edgePaths&quot;&gt;&lt;path d=&quot;M138,62L138,66.167C138,70.333,138,78.667,138,86.333C138,94,138,101,138,104.5L138,108&quot; id=&quot;my-svg-L_A_B_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_A_B_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo2Mn0seyJ4IjoxMzgsInkiOjg3fSx7IngiOjEzOCwieSI6MTEyfV0=&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,190L138,194.167C138,198.333,138,206.667,138,214.333C138,222,138,229,138,232.5L138,236&quot; id=&quot;my-svg-L_B_C_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_B_C_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5IjoxOTB9LHsieCI6MTM4LCJ5IjoyMTV9LHsieCI6MTM4LCJ5IjoyNDB9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,318L138,322.167C138,326.333,138,334.667,138,342.333C138,350,138,357,138,360.5L138,364&quot; id=&quot;my-svg-L_C_D_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_C_D_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5IjozMTh9LHsieCI6MTM4LCJ5IjozNDN9LHsieCI6MTM4LCJ5IjozNjh9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,446L138,450.167C138,454.333,138,462.667,138,470.333C138,478,138,485,138,488.5L138,492&quot; id=&quot;my-svg-L_D_E_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_D_E_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo0NDZ9LHsieCI6MTM4LCJ5Ijo0NzF9LHsieCI6MTM4LCJ5Ijo0OTZ9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,574L138,578.167C138,582.333,138,590.667,138,598.333C138,606,138,613,138,616.5L138,620&quot; id=&quot;my-svg-L_E_F_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_E_F_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo1NzR9LHsieCI6MTM4LCJ5Ijo1OTl9LHsieCI6MTM4LCJ5Ijo2MjR9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;path d=&quot;M138,702L138,706.167C138,710.333,138,718.667,138,726.333C138,734,138,741,138,744.5L138,748&quot; id=&quot;my-svg-L_F_G_0&quot; class=&quot;edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link&quot; style=&quot;;&quot; data-edge=&quot;true&quot; data-et=&quot;edge&quot; data-id=&quot;L_F_G_0&quot; data-points=&quot;W3sieCI6MTM4LCJ5Ijo3MDJ9LHsieCI6MTM4LCJ5Ijo3Mjd9LHsieCI6MTM4LCJ5Ijo3NTJ9XQ==&quot; data-look=&quot;classic&quot; marker-end=&quot;url(#my-svg_flowchart-v2-pointEnd)&quot;/&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabels&quot;&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_A_B_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_B_C_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_C_D_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_D_E_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_E_F_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;edgeLabel&quot;&gt;&lt;g class=&quot;label&quot; data-id=&quot;L_F_G_0&quot; transform=&quot;translate(0, 0)&quot;&gt;&lt;foreignObject width=&quot;0&quot; height=&quot;0&quot;&gt;&lt;div xmlns=&quot;http://www.w3.org/1999/xhtml&quot; class=&quot;labelBkg&quot; style=&quot;display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot;&gt;&lt;span class=&quot;edgeLabel&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;nodes&quot;&gt;&lt;g class=&quot;node default create&quot; id=&quot;my-svg-flowchart-A-0&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 35)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#4ecdc4 !important;stroke:#1a9c9e !important&quot; x=&quot;-119.3203125&quot; y=&quot;-27&quot; width=&quot;238.640625&quot; height=&quot;54&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#000 !important&quot; transform=&quot;translate(-89.3203125, -12)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;178.640625&quot; height=&quot;24&quot;&gt;&lt;div style=&quot;color: rgb(0, 0, 0) !important; display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#000 !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🚀 Initial Game Creation&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default tweak&quot; id=&quot;my-svg-flowchart-B-1&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 151)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#feca57 !important;stroke:#c7a600 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#000 !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(0, 0, 0) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#000 !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;📐 Canvas &amp;amp; Spacing Adjustments&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default balance&quot; id=&quot;my-svg-flowchart-C-3&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 279)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#ff6b6b !important;stroke:#c23616 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🔫 Reduce Enemy Bullet Frequency&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default balance&quot; id=&quot;my-svg-flowchart-D-5&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 407)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#ff6b6b !important;stroke:#c23616 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🐢 Further Reduce Bullets &amp;amp; Speed&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default design&quot; id=&quot;my-svg-flowchart-E-7&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 535)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#a29bfe !important;stroke:#6c5ce7 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;⚖️ Remove Kill-Based Speed Scaling&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default design&quot; id=&quot;my-svg-flowchart-F-9&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 663)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#a29bfe !important;stroke:#6c5ce7 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;📊 Cap Bullet Rate by Level&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;g class=&quot;node default bugfix&quot; id=&quot;my-svg-flowchart-G-11&quot; data-look=&quot;classic&quot; transform=&quot;translate(138, 791)&quot;&gt;&lt;rect class=&quot;basic label-container&quot; style=&quot;fill:#fd79a8 !important;stroke:#e84393 !important&quot; x=&quot;-130&quot; y=&quot;-39&quot; width=&quot;260&quot; height=&quot;78&quot;/&gt;&lt;g class=&quot;label&quot; style=&quot;color:#fff !important&quot; transform=&quot;translate(-100, -24)&quot;&gt;&lt;rect/&gt;&lt;foreignObject width=&quot;200&quot; height=&quot;48&quot;&gt;&lt;div style=&quot;color: rgb(255, 255, 255) !important; display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;&quot; xmlns=&quot;http://www.w3.org/1999/xhtml&quot;&gt;&lt;span style=&quot;color:#fff !important&quot; class=&quot;nodeLabel&quot;&gt;&lt;p&gt;🛠️ Fix Level Transition Bugs&lt;/p&gt;&lt;/span&gt;&lt;/div&gt;&lt;/foreignObject&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;/g&gt;&lt;defs&gt;&lt;filter id=&quot;my-svg-drop-shadow&quot; height=&quot;130%&quot; width=&quot;130%&quot;&gt;&lt;feDropShadow dx=&quot;4&quot; dy=&quot;4&quot; stdDeviation=&quot;0&quot; flood-opacity=&quot;0.06&quot; flood-color=&quot;#000000&quot;/&gt;&lt;/filter&gt;&lt;/defs&gt;&lt;defs&gt;&lt;filter id=&quot;my-svg-drop-shadow-small&quot; height=&quot;150%&quot; width=&quot;150%&quot;&gt;&lt;feDropShadow dx=&quot;2&quot; dy=&quot;2&quot; stdDeviation=&quot;0&quot; flood-opacity=&quot;0.06&quot; flood-color=&quot;#000000&quot;/&gt;&lt;/filter&gt;&lt;/defs&gt;&lt;/svg&gt; {}" href="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html" style="--delay: 70ms">
       <div class="card-art"><iframe src="vibe-coding/games/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled/Qwen3.5-27b-claude-4.6-opus-reasoning-distilled.html" title="Preview of Qwen3.5 27b Claude 4.6 Opus Reasoning Distilled" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Qwen3.5 27b Claude 4.6 Opus Reasoning Distilled</span><h2>Qwen3.5 27b Claude 4.6 Opus Reasoning Distilled</h2><p>A vibe-coded space invaders clone using qwen3.5-27b-claude-4.6-opus-reasoning-distilled model.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
+    </a>
+<a class="project-card" data-search="vibe-coding/games/asteroid-clone qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html gemma-4-12-b-qat.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+    &lt;title&gt;Asteroids Game&lt;/title&gt;
+    &lt;style&gt;
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: &#39;Courier New&#39;, Courier, monospace;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: black;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;canvas id=&quot;gameCanvas&quot; width=&quot;800&quot; height=&quot;600&quot;&gt;&lt;/canvas&gt;
+
+    &lt;script&gt;
+        const canvas = document.getElementById(&#39;gameCanvas&#39;);
+        const ctx = canvas.getContext(&#39;2d&#39;);
+
+        // Game Constants &amp; State
+        let score = 0;
+        let level = 1;
+        let isGameOver = false;
+        let friendlyFire = false; // New flag to track cause of game over
+        let gamePaused = false;
+        let bonusEnabled = false;
+        let lastTime = 0;
+        const keysPressed = {};
+
+        // Entities
+        let ship;
+        let asteroids = [];
+        let projectiles = [];
+        let particles = [];
+        let stars = [];
+
+        class Ship {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width / 2;
+                this.y = canvas.height / 2;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.rotation = -Math.PI / 2; // Facing up
+                this.radius = 15;
+            }
+
+            update(dt) {
+                if (keysPressed[&#39;ArrowLeft&#39;] || keysPressed[&#39;KeyA&#39;]) this.rotation -= 5 * Math.PI / 180 * dt;
+                if (keysPressed[&#39;ArrowRight&#39;] || keysPressed[&#39;KeyD&#39;]) this.rotation += 5 * Math.PI / 180 * dt;
+
+                if (keysPressed[&#39;ArrowUp&#39;] || keysPressed[&#39;KeyW&#39;]) {
+                    this.velocityX += Math.cos(this.rotation) * 0.3 * dt; // Reverted to original acceleration of 0.3 px/frame^2
+                    this.velocityY += Math.sin(this.rotation) * 0.3 * dt;
+                } else {
+                    this.velocityX *= 0.98;
+                    this.velocityY *= 0.98;
+                }
+
+                const speed = Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+                if (speed &gt; 8) { // Reverted to original max speed cap of 8 px/frame
+                    this.velocityX = (this.velocityX / speed) * 8;
+                    this.velocityY = (this.velocityY / speed) * 8;
+                }
+
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+
+                // Wrap around
+                if (this.x &lt; 0) this.x = canvas.width;
+                else if (this.x &gt; canvas.width) this.x = 0;
+                if (this.y &lt; 0) this.y = canvas.height;
+                else if (this.y &gt; canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                // Thruster Flame
+                if (keysPressed[&#39;ArrowUp&#39;] || keysPressed[&#39;KeyW&#39;]) {
+                    ctx.fillStyle = &#39;red&#39;;
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 5);
+                    ctx.lineTo(-25, 0);
+                    ctx.lineTo(-10, -5);
+                    ctx.fill();
+                }
+
+                // Ship Body (Elongated triangle 20x30)
+                ctx.fillStyle = &#39;cyan&#39;;
+                ctx.beginPath();
+                ctx.moveTo(15, 0);  // Tip
+                ctx.lineTo(-10, -10); // Back left
+                ctx.lineTo(-10, 10);  // Back right
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.velocityX = vx;
+                this.velocityY = vy;
+                this.distanceTraveled = 0;
+                this.lifeSpan = 1000; // px limit
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                this.distanceTraveled += Math.sqrt(this.velocityX ** 2 + this.velocityY ** 2);
+
+                if (this.x &lt; 0) this.x = canvas.width;
+                else if (this.x &gt; canvas.width) this.x = 0;
+                if (this.y &lt; 0) this.y = canvas.height;
+                else if (this.y &gt; canvas.height) this.y = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = &#39;yellow&#39;;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Asteroid {
+            constructor(x, y, radius, vx, vy) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.vx = vx;
+                this.vy = vy;
+                this.vertices = [];
+                const numVertices = 8 + Math.floor(Math.random() * 5);
+                for (let i = 0; i &lt; numVertices; i++) {
+                    const angle = (i / numVertices) * Math.PI * 2;
+                    const dist = radius * (0.8 + Math.random() * 0.4);
+                    this.vertices.push({ x: Math.cos(angle) * dist, y: Math.sin(angle) * dist });
+                }
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x &lt; -this.radius) this.x = canvas.width + this.radius;
+                else if (this.x &gt; canvas.width + this.radius) this.x = -this.radius;
+                if (this.y &lt; -this.radius) this.y = canvas.height + this.radius;
+                else if (this.y &gt; canvas.height + this.radius) this.y = -this.radius;
+            }
+
+            draw() {
+                ctx.strokeStyle = &#39;grey&#39;;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.vertices[0].x, this.y + this.vertices[0].y);
+                for (let i = 1; i &lt; this.vertices.length; i++) {
+                    ctx.lineTo(this.x + this.vertices[i].x, this.y + this.vertices[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            split() {
+                if (this.radius &gt; 15) {
+                    const newRad = this.radius / 1.5;
+                    return [
+                        new Asteroid(this.x, this.y, newRad, this.vx * 1.2, this.vy * 1.2),
+                        new Asteroid(this.x, this.y, newRad, -this.vx * 0.8, -this.vy * 0.8)
+                    ];
+                }
+                return [];
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+                this.lifeSpan = 1.0;
+                this.color = color;
+            }
+
+            update(dt) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.lifeSpan -= dt * 0.5;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.lifeSpan;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, 2, 2);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function initGame() {
+            score = 0;
+            level = 1;
+            isGameOver = false;
+            bonusEnabled = false;
+            ship = new Ship();
+            asteroids = [];
+            projectiles = [];
+            particles = [];
+            stars = Array.from({ length: 100 }, () =&gt; ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                opacity: Math.random()
+            }));
+
+            spawnAsteroids(5);
+        }
+
+        function spawnAsteroids(count) {
+            const baseSpeed = 1.5 + (level - 1) * 0.3;
+            for (let i = 0; i &lt; count; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                } while (Math.hypot(x - ship.x, y - ship.y) &lt; 100);
+
+                const radius = 40;
+                const vx = (Math.random() - 0.5) * baseSpeed * 2;
+                const vy = (Math.random() - 0.5) * baseSpeed * 2;
+                asteroids.push(new Asteroid(x, y, radius, vx, vy));
+            }
+        }
+
+        function handleCollisions() {
+            friendlyFire = false; // Reset each frame
+            // Projectile vs Asteroid
+            for (let i = projectiles.length - 1; i &gt;= 0; i--) {
+                const p = projectiles[i];
+                for (let j = asteroids.length - 1; j &gt;= 0; j--) {
+                    const a = asteroids[j];
+                    if (Math.hypot(p.x - a.x, p.y - a.y) &lt; a.radius) {
+                        // Hit!
+                        createExplosion(a.x, a.y, &#39;orange&#39;);
+                        const newAsteroids = a.split();
+                        asteroids.splice(j, 1);
+                        projectiles.splice(i, 1);
+                        score += Math.floor(a.radius);
+                        if (newAsteroids.length &gt; 0) {
+                            asteroids.push(...newAsteroids);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Ship vs Asteroid
+            for (let a of asteroids) {
+                if (Math.hypot(ship.x - a.x, ship.y - a.y) &lt; a.radius + ship.radius * 0.8) {
+                    isGameOver = true;
+                    friendlyFire = false; // Ship hit by asteroid is standard Game Over
+                    document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid red&#39;;
+                }
+            }
+
+            // Projectile vs Ship (Friendly Fire)
+            for (let p of projectiles) {
+                if (Math.hypot(p.x - ship.x, p.y - ship.y) &lt; ship.radius + 5 &amp;&amp; p.distanceTraveled &gt; 100) {
+                    isGameOver = true;
+                    friendlyFire = true; // Projectile hit own ship is Friendly Fire
+                    document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid red&#39;;
+                }
+            }
+
+            if (asteroids.length === 0 &amp;&amp; !isGameOver) {
+                level++;
+                spawnAsteroids(5 + (level - 1) * 2);
+            }
+        }
+
+        function createExplosion(x, y, color) {
+            for (let i = 0; i &lt; 8; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function update(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 16 === 0 ? 1 : (timestamp - lastTime) / 16; // Normalize to ~60fps steps if needed, but requirements say use delta time.
+            // Actually let&#39;s just use a standard dt calculation:
+            const realDt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+
+            if (!gamePaused &amp;&amp; !isGameOver) {
+                ship.update(realDt * 60); // Scale to &quot;per frame&quot; logic if needed, but requirements say use delta time for stable movement.
+                // Let&#39;s stick to the requirement: &quot;Use requestAnimationFrame with delta time for stable movement.&quot;
+
+                projectiles.forEach((p, i) =&gt; {
+                    p.update();
+                    if (p.distanceTraveled &gt; 1000) projectiles.splice(i, 1);
+                });
+
+                asteroids.forEach(a =&gt; a.update());
+                particles.forEach((p, i) =&gt; {
+                    p.update(realDt * 60);
+                    if (p.lifeSpan &lt;= 0) particles.splice(i, 1);
+                });
+
+                handleCollisions();
+            }
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.fillStyle = &#39;black&#39;;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Stars
+            stars.forEach(s =&gt; {
+                ctx.globalAlpha = s.opacity;
+                ctx.fillStyle = &#39;white&#39;;
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+            ctx.globalAlpha = 1.0;
+
+            particles.forEach(p =&gt; p.draw());
+            projectiles.forEach(p =&gt; p.draw());
+            asteroids.forEach(a =&gt; a.draw());
+            ship.draw();
+
+            // HUD
+            ctx.fillStyle = &#39;white&#39;;
+            ctx.font = &#39;16px Courier New&#39;;
+            ctx.fillText(`Score: ${score}`, 20, 30);
+            ctx.fillText(`Level: ${level}`, 20, 50);
+            
+            if (!bonusEnabled) {
+                ctx.fillText(`Projectiles: ${projectiles.length}/3`, 20, 70);
+            } else {
+                ctx.fillStyle = &#39;yellow&#39;;
+                ctx.fillText(`BONUS: INFINITE PROJECTILES`, 20, 70);
+            }
+
+            if (isGameOver) {
+                ctx.fillStyle = &#39;red&#39;;
+                ctx.textAlign = &#39;center&#39;;
+                const msg = friendlyFire ? &quot;FRIENDLY FIRE! - Press R to Restart&quot; : &quot;GAME OVER - Press R to Restart&quot;;
+                ctx.fillText(msg, canvas.width / 2, canvas.height / 2);
+            }
+
+            ctx.textAlign = &#39;left&#39;; // Reset
+        }
+
+        window.addEventListener(&#39;keydown&#39;, e =&gt; {
+            keysPressed[e.code] = true;
+            if (e.code === &#39;Space&#39;) {
+                const canFire = !bonusEnabled || projectiles.length &lt; 3; // Changed from &amp;&amp; to || for Infinite Projectiles bonus
+                if (canFire) {
+                    // Projectile initial velocity equals the ship&#39;s current velocity plus a value that is 1.3x the max speed of the ship.
+                    // Max ship speed is 8 px/frame, so base projectile velocity should be 8 * 1.3 = 10.4 px/frame.
+                    const baseVx = Math.cos(ship.rotation) * 10.4;
+                    const baseVy = Math.sin(ship.rotation) * 10.4;
+                    projectiles.push(new Projectile(ship.x, ship.y, baseVx + ship.velocityX, baseVy + ship.velocityY));
+                }
+            }
+            if (e.code === &#39;KeyR&#39; &amp;&amp; isGameOver) {
+                initGame();
+                document.getElementById(&#39;gameCanvas&#39;).style.border = &#39;2px solid #333&#39;;
+            }
+            if (e.code === &#39;KeyB&#39;) {
+                bonusEnabled = !bonusEnabled;
+            }
+        });
+
+        window.addEventListener(&#39;keyup&#39;, e =&gt; keysPressed[e.code] = false);
+        document.addEventListener(&#39;visibilitychange&#39;, () =&gt; gamePaused = document.hidden);
+
+        initGame();
+        requestAnimationFrame(update);
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+&lt;title&gt;Asteroids&lt;/title&gt;
+&lt;style&gt;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #0a0a1a;
+    font-family: monospace;
+  }
+  h1 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    letter-spacing: 4px;
+    font-weight: normal;
+  }
+  canvas {
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    object-fit: contain;
+    border: 1px solid #333;
+  }
+  .controls-hint {
+    color: #666666;
+    font-size: 0.85rem;
+    margin-top: 10px;
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;Asteroids&lt;/h1&gt;
+&lt;canvas id=&quot;game&quot; width=&quot;800&quot; height=&quot;600&quot;&gt;&lt;/canvas&gt;
+&lt;p class=&quot;controls-hint&quot;&gt;← → / A D Rotate · ↑ / W Thrust · Space Fire · R Restart · B Bonus&lt;/p&gt;
+
+&lt;script&gt;
+(function () {
+  &quot;use strict&quot;;
+
+  // ─── Constants ──────────────────────────────────────────────
+  const W = 800, H = 600;
+  const ROT_SPEED = 5 * Math.PI / 180;   // 5 degrees/frame in radians
+  const THRUST_ACCEL = 0.3;               // px/frame²
+  const MAX_SPEED = 8;                    // px/frame
+  const FRICTION = 0.98;                  // multiplier when no thrust
+  const PROJ_MAX_DIST = 1000;             // pixels before despawn
+  const PROJ_SPEED_BONUS = 6;             // extra speed in facing dir
+  const MAX_PROJECTILES = 3;
+  const SHIP_COLLISION_R = 15;            // px radius for ship collision circle
+  const ASTEROID_START_COUNT = 5;
+  const ASTEROID_LARGE_RADIUS = 40;
+  const ASTEROID_SPLIT_DIVISOR = 1.5;
+  const ASTEROID_DESTROY_THRESHOLD = 15;  // px — below this, destroy without split
+  const PARTICLE_COLORS = [&quot;#ff4444&quot;, &quot;#ffaa00&quot;, &quot;#ffff00&quot;, &quot;#44ff44&quot;, &quot;#4444ff&quot;];
+
+  // ─── Canvas &amp; Context ──────────────────────────────────────
+  const canvas = document.getElementById(&quot;game&quot;);
+  const ctx = canvas.getContext(&quot;2d&quot;);
+
+  // ─── Input Manager ─────────────────────────────────────────
+  const pressedKeys = {};
+
+  var gameKeyMap = {
+    &quot;ArrowLeft&quot;: &quot;left&quot;,
+    &quot;ArrowRight&quot;: &quot;right&quot;,
+    &quot;ArrowUp&quot;: &quot;up&quot;,
+    &quot;a&quot;: &quot;left&quot;, &quot;A&quot;: &quot;left&quot;,
+    &quot;d&quot;: &quot;right&quot;, &quot;D&quot;: &quot;right&quot;,
+    &quot;w&quot;: &quot;up&quot;, &quot;W&quot;: &quot;up&quot;,
+    &quot; &quot;: &quot;fire&quot;,
+    &quot;b&quot;: &quot;bonus&quot;, &quot;B&quot;: &quot;bonus&quot;,
+    &quot;r&quot;: &quot;restart&quot;, &quot;R&quot;: &quot;restart&quot;
+  };
+
+  // Use capture phase so we catch keys before browser default processing (Space scrolls)
+  document.addEventListener(&quot;keydown&quot;, function (e) {
+    var action = gameKeyMap[e.key];
+    if (action) e.preventDefault();
+    pressedKeys[e.key] = true;
+  }, { capture: true });
+
+  window.addEventListener(&quot;keyup&quot;, function (e) {
+    pressedKeys[e.key] = false;
+  });
+
+  // Ensure canvas captures keyboard focus on click and auto-focuses on load
+  canvas.setAttribute(&quot;tabindex&quot;, &quot;0&quot;);
+  canvas.focus();
+
+  // ─── Starfield (generated once) ─────────────────────────────
+  var stars = [];
+  for (var i = 0; i &lt; 150; i++) {
+    stars.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      alpha: 0.1 + Math.random() * 0.4
+    });
+  }
+
+  // ─── Game State ──────────────────────────────────────────────
+  var state = {};
+
+  function resetGame(fullRestart) {
+    if (fullRestart === undefined) fullRestart = true;
+    state.ship = createShip(W / 2, H / 2);
+    state.projectiles = [];
+    state.asteroids = [];
+    state.particles = [];
+    state.score = 0;
+    state.level = 1;
+    state.arcShot = false;
+    if (fullRestart) {
+      state.status = &quot;playing&quot;; // playing, gameover, friendlyfire, levelcomplete
+      state.completeTimer = 0;
+    } else {
+      state.status = &quot;playing&quot;;
+      state.completeTimer = 0;
+    }
+    spawnLevelAsteroids();
+  }
+
+  function nextLevel() {
+    state.level++;
+    state.projectiles = [];
+    state.particles = [];
+    state.ship.alive = true;
+    state.status = &quot;playing&quot;;
+    state.completeTimer = 0;
+    // Reset ship to center for new level
+    state.ship.x = W / 2;
+    state.ship.y = H / 2;
+    state.ship.vx = 0;
+    state.ship.vy = 0;
+    spawnLevelAsteroids();
+  }
+
+  function spawnLevelAsteroids() {
+    var count = ASTEROID_START_COUNT + (state.level - 1) * 2;
+    var speedMult = 1 + (state.level - 1) * 0.3 / 2; // base ~2, add 0.3 per level
+    for (var i = 0; i &lt; count; i++) {
+      spawnAsteroidAway(ASTEROID_LARGE_RADIUS, speedMult);
+    }
+  }
+
+  function spawnAsteroidAway(radius, speedMult) {
+    var x, y, dist;
+    do {
+      x = Math.random() * W;
+      y = Math.random() * H;
+      dx = x - state.ship.x;
+      dy = y - state.ship.y;
+      // Handle wrapping distance for placement check
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+      dist = Math.sqrt(dx * dx + dy * dy);
+    } while (dist &lt; 150);
+
+    var angle = Math.random() * Math.PI * 2;
+    var speed = (1.5 + Math.random()) * (speedMult || 1); // 1.5-2.5 base, scaled by level
+    state.asteroids.push(createAsteroid(x, y, radius, Math.cos(angle) * speed, Math.sin(angle) * speed));
+  }
+
+  // ─── Entity Factories ──────────────────────────────────────
+  function createShip(x, y) {
+    return { x: x || W / 2, y: y || H / 2, angle: 0, vx: 0, vy: 0, alive: true };
+  }
+
+  function createAsteroid(x, y, radius, vx, vy) {
+    var verts = [];
+    var nVerts = 8 + Math.floor(Math.random() * 6); // 8-13 vertices
+    for (var i = 0; i &lt; nVerts; i++) {
+      var a = (i / nVerts) * Math.PI * 2;
+      var r = radius * (0.75 + Math.random() * 0.5); // ±25% perturbation
+      verts.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+    }
+    return { x: x, y: y, vx: vx || 0, vy: vy || 0, radius: radius, vertices: verts };
+  }
+
+  function spawnParticles(x, y, count) {
+    for (var i = 0; i &lt; count; i++) {
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 0.5 + Math.random() * 3.5; // 0.5-4 px/frame
+      var maxLife = 20 + Math.floor(Math.random() * 21); // 20-40 frames
+      state.particles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: maxLife,
+        maxLife: maxLife,
+        color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+        size: 1 + Math.random() * 2 // 1-3px radius
+      });
+    }
+  }
+
+  var dx, dy; // reused for distance calcs
+
+  // ─── Update Functions ──────────────────────────────────────
+  function updateShip() {
+    // Rotation (5 degrees/frame = ROT_SPEED radians)
+    if (pressedKeys[&quot;ArrowLeft&quot;] || pressedKeys[&quot;a&quot;] || pressedKeys[&quot;A&quot;]) state.ship.angle -= ROT_SPEED;
+    if (pressedKeys[&quot;ArrowRight&quot;] || pressedKeys[&quot;d&quot;] || pressedKeys[&quot;D&quot;]) state.ship.angle += ROT_SPEED;
+
+    // Thrust
+    var thrusting = !!(pressedKeys[&quot;ArrowUp&quot;] || pressedKeys[&quot;w&quot;] || pressedKeys[&quot;W&quot;]);
+
+    // Thrust direction matches the ship&#39;s tip via transformPoint rotation
+    var thrustDirX =  Math.sin(state.ship.angle);
+    var thrustDirY = -Math.cos(state.ship.angle);
+
+    if (!state.ship.alive) return;
+    if (thrusting) {
+      state.ship.vx += thrustDirX * THRUST_ACCEL;
+      state.ship.vy += thrustDirY * THRUST_ACCEL;
+    } else {
+      // Friction when not thrusting
+      state.ship.vx *= FRICTION;
+      state.ship.vy *= FRICTION;
+    }
+
+    // Clamp speed to MAX_SPEED
+    var mag = Math.sqrt(state.ship.vx * state.ship.vx + state.ship.vy * state.ship.vy);
+    if (mag &gt; MAX_SPEED) {
+      state.ship.vx = (state.ship.vx / mag) * MAX_SPEED;
+      state.ship.vy = (state.ship.vy / mag) * MAX_SPEED;
+    }
+
+    // Move
+    state.ship.x += state.ship.vx;
+    state.ship.y += state.ship.vy;
+
+    // Wrap around edges
+    if (state.ship.x &lt; -20) state.ship.x = W + 20;
+    else if (state.ship.x &gt; W + 20) state.ship.x = -20;
+    if (state.ship.y &lt; -20) state.ship.y = H + 20;
+    else if (state.ship.y &gt; H + 20) state.ship.y = -20;
+
+    // Fire projectile on Space press
+    if (pressedKeys[&quot; &quot;]) {
+      fireProjectile();
+      pressedKeys[&quot; &quot;] = false; // debounce — one shot per keypress
+    }
+
+    // Toggle bonus with B key
+    if (pressedKeys[&quot;b&quot;] || pressedKeys[&quot;B&quot;]) {
+      state.arcShot = !state.arcShot;
+      pressedKeys[&quot;b&quot;] = false;
+      pressedKeys[&quot;B&quot;] = false;
+    }
+  }
+
+  function fireProjectile() {
+    var currentCount = 0;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) currentCount++;
+    }
+
+    // Tip direction matches transformPoint rotation for consistency with thrust
+    var tipDirX  =  Math.sin(state.ship.angle);
+    var tipDirY  = -Math.cos(state.ship.angle);
+    var tipWorldX = state.ship.x + tipDirX * 15;
+    var tipWorldY = state.ship.y + tipDirY * 15;
+
+    if (state.arcShot) {
+      // Arc shot: fire 3 projectiles at angle-15°, angle, angle+15° using same rotation as ship tip
+      for (var i = -1; i &lt;= 1; i++) {
+        var a = state.ship.angle + i * 15 * Math.PI / 180;
+        state.projectiles.push({
+          x: tipWorldX, y: tipWorldY,
+          vx: state.ship.vx + Math.sin(a) * PROJ_SPEED_BONUS,
+          vy: state.ship.vy - Math.cos(a) * PROJ_SPEED_BONUS,
+          distanceTraveled: 0,
+          alive: true
+        });
+      }
+    } else {
+      if (currentCount &gt;= MAX_PROJECTILES) return;
+
+      state.projectiles.push({
+        x: tipWorldX, y: tipWorldY,
+        vx: state.ship.vx + tipDirX * PROJ_SPEED_BONUS,
+        vy: state.ship.vy + tipDirY * PROJ_SPEED_BONUS,
+        distanceTraveled: 0,
+        alive: true
+      });
+    }
+  }
+
+  function updateProjectiles() {
+    for (var i = state.projectiles.length - 1; i &gt;= 0; i--) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      // Move and track distance
+      p.x += p.vx;
+      p.y += p.vy;
+      p.distanceTraveled += Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+
+      // Wrap around edges
+      if (p.x &lt; 0) p.x = W; else if (p.x &gt; W) p.x = 0;
+      if (p.y &lt; 0) p.y = H; else if (p.y &gt; H) p.y = 0;
+
+      // Remove if exceeded max distance
+      if (p.distanceTraveled &gt;= PROJ_MAX_DIST) {
+        p.alive = false;
+      }
+    }
+    // Clean up dead projectiles periodically
+    state.projectiles = state.projectiles.filter(function (p) { return p.alive; });
+  }
+
+  function updateAsteroids() {
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      a.x += a.vx;
+      a.y += a.vy;
+
+      // Wrap around edges
+      if (a.x &lt; -a.radius) a.x = W + a.radius;
+      else if (a.x &gt; W + a.radius) a.x = -a.radius;
+      if (a.y &lt; -a.radius) a.y = H + a.radius;
+      else if (a.y &gt; H + a.radius) a.y = -a.radius;
+    }
+  }
+
+  function updateParticles() {
+    for (var i = state.particles.length - 1; i &gt;= 0; i--) {
+      var p = state.particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+      if (p.life &lt;= 0) {
+        state.particles.splice(i, 1);
+      }
+    }
+  }
+
+  // ─── Collision Detection ──────────────────────────────────
+  function checkCollisions() {
+    if (!state.ship.alive || state.status !== &quot;playing&quot;) return;
+
+    // Ship vs asteroids (circle-circle)
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      dx = a.x - state.ship.x;
+      dy = a.y - state.ship.y;
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist &lt; SHIP_COLLISION_R + a.radius) {
+        state.ship.alive = false;
+        state.status = &quot;gameover&quot;;
+        return;
+      }
+    }
+
+    // Projectiles vs asteroids (point-in-circle)
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+
+      for (var j = 0; j &lt; state.asteroids.length; j++) {
+        var a = state.asteroids[j];
+        dx = a.x - p.x;
+        dy = a.y - p.y;
+        // Handle wrapping distance check
+        if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+        if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist &lt; a.radius) {
+          p.alive = false;
+          // Score: larger asteroids worth more points
+          state.score += Math.round(a.radius);
+
+          // Spawn particles at collision point
+          spawnParticles(p.x, p.y, 12);
+
+          // Split or destroy asteroid
+          if (a.radius &gt; ASTEROID_DESTROY_THRESHOLD) {
+            var newRadius = a.radius / ASTEROID_SPLIT_DIVISOR;
+            var speedBoost = 1.2;
+            var numPieces = 2 + Math.floor(Math.random() * 2); // 2-3 pieces
+
+            for (var k = 0; k &lt; numPieces; k++) {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = Math.sqrt(a.vx * a.vx + a.vy * a.vy) * speedBoost || (1.5 + Math.random()) * speedBoost;
+              state.asteroids.push(createAsteroid(
+                a.x, a.y, newRadius,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed
+              ));
+            }
+          }
+
+          // Remove the hit asteroid
+          state.asteroids.splice(j, 1);
+          break;
+        }
+      }
+    }
+
+    // Friendly fire: projectiles vs ship (point-in-circle with ~15px radius)
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive || !state.ship.alive) continue;
+
+      dx = state.ship.x - p.x;
+      dy = state.ship.y - p.y;
+      // Handle wrapping distance check for friendly fire too
+      if (dx &gt; W / 2) dx -= W; else if (dx &lt; -W / 2) dx += W;
+      if (dy &gt; H / 2) dy -= H; else if (dy &lt; -H / 2) dy += H;
+
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist &lt; SHIP_COLLISION_R) {
+        state.ship.alive = false;
+        state.status = &quot;friendlyfire&quot;;
+        return;
+      }
+    }
+
+    // Check level complete: all asteroids cleared
+    if (state.asteroids.length === 0 &amp;&amp; state.status === &quot;playing&quot;) {
+      state.status = &quot;levelcomplete&quot;;
+      state.completeTimer = Date.now();
+    }
+  }
+
+  function checkLevelComplete() {
+    if (state.status !== &quot;levelcomplete&quot;) return;
+    var elapsed = Date.now() - state.completeTimer;
+    if (elapsed &gt;= 2000) {
+      nextLevel();
+    }
+  }
+
+  // ─── Render Functions ──────────────────────────────────────
+  function drawStarfield() {
+    ctx.fillStyle = &quot;#ffffff&quot;;
+    for (var i = 0; i &lt; stars.length; i++) {
+      var s = stars[i];
+      ctx.globalAlpha = s.alpha;
+      ctx.fillRect(s.x, s.y, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawShip() {
+    if (!state.ship.alive) return;
+
+    var cos = Math.cos(state.ship.angle);
+    var sin = Math.sin(state.ship.angle);
+
+    // Ship vertices in local space: tip (0,-15), left (-10,12), right (10,12)
+    // Transform to world space using rotation matrix around ship center
+    function transformPoint(lx, ly) {
+      return {
+        x: state.ship.x + lx * cos - ly * sin,
+        y: state.ship.y + lx * sin + ly * cos
+      };
+    }
+
+    var tip = transformPoint(0, -15);
+    var left = transformPoint(-10, 12);
+    var right = transformPoint(10, 12);
+
+    ctx.strokeStyle = &quot;#ffffff&quot;;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(left.x, left.y);
+    ctx.lineTo(right.x, right.y);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Thruster flame when thrusting
+    if (pressedKeys[&quot;ArrowUp&quot;] || pressedKeys[&quot;w&quot;] || pressedKeys[&quot;W&quot;]) {
+      var tailCenter = transformPoint(0, 15);
+      var tailLeft = transformPoint(-6, 24);
+      var tailRight = transformPoint(6, 24);
+
+      ctx.fillStyle = &quot;#ff4422&quot;;
+      ctx.beginPath();
+      ctx.moveTo(tailCenter.x, tailCenter.y);
+      ctx.lineTo(tailLeft.x, tailLeft.y);
+      ctx.lineTo(tailRight.x, tailRight.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawAsteroids() {
+    ctx.strokeStyle = &quot;#8b7355&quot;;
+    ctx.lineWidth = 1.5;
+    for (var i = 0; i &lt; state.asteroids.length; i++) {
+      var a = state.asteroids[i];
+      ctx.beginPath();
+      for (var j = 0; j &lt; a.vertices.length; j++) {
+        var vx = a.x + a.vertices[j].x;
+        var vy = a.y + a.vertices[j].y;
+        if (j === 0) ctx.moveTo(vx, vy);
+        else ctx.lineTo(vx, vy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  function drawProjectiles() {
+    ctx.fillStyle = &quot;#ff6b6b&quot;;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      var p = state.projectiles[i];
+      if (!p.alive) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawParticles() {
+    for (var i = 0; i &lt; state.particles.length; i++) {
+      var p = state.particles[i];
+      var alpha = p.life / p.maxLife;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
+  function drawHUD() {
+    // Score and Level (top-left)
+    ctx.textAlign = &quot;left&quot;;
+    ctx.font = &quot;16px monospace&quot;;
+    ctx.fillStyle = &quot;#aaaaaa&quot;;
+    ctx.fillText(&quot;SCORE: &quot; + state.score, 15, 28);
+    ctx.fillText(&quot;LEVEL: &quot; + state.level, 15, 48);
+
+    // Projectile count (top-right)
+    var aliveCount = 0;
+    for (var i = 0; i &lt; state.projectiles.length; i++) {
+      if (state.projectiles[i].alive) aliveCount++;
+    }
+    ctx.textAlign = &quot;right&quot;;
+    ctx.font = &quot;14px monospace&quot;;
+    ctx.fillStyle = &quot;#aaaaaa&quot;;
+    ctx.fillText(&quot;PROJECTILES: &quot; + aliveCount + &quot;/3&quot;, W - 15, 28);
+
+    // Bonus indicator (top-right below projectile count)
+    if (state.arcShot) {
+      ctx.font = &quot;bold 14px monospace&quot;;
+      ctx.fillStyle = &quot;#ffaa00&quot;;
+      ctx.fillText(&quot;ARC SHOT: ON&quot;, W - 15, 46);
+    }
+  }
+
+  function drawOverlay(titleText, titleColor, subtitleText) {
+    // Semi-transparent dark background
+    ctx.fillStyle = &quot;rgba(0, 0, 0, 0.7)&quot;;
+    ctx.fillRect(0, 0, W, H);
+
+    // Title text (centered)
+    ctx.textAlign = &quot;center&quot;;
+    ctx.font = &quot;36px monospace bold&quot;;
+    ctx.fillStyle = titleColor;
+    ctx.fillText(titleText, W / 2, 290);
+
+    // Subtitle text
+    if (subtitleText) {
+      ctx.font = &quot;20px monospace&quot;;
+      ctx.fillStyle = &quot;#aaaaaa&quot;;
+      ctx.fillText(subtitleText, W / 2, 335);
+    }
+  }
+
+  function drawStatusOverlay() {
+    switch (state.status) {
+      case &quot;gameover&quot;:
+        drawOverlay(&quot;GAME OVER&quot;, &quot;#ffffff&quot;, &quot;Press R to Restart&quot;);
+        break;
+      case &quot;friendlyfire&quot;:
+        drawOverlay(&quot;FRIENDLY FIRE!&quot;, &quot;#ff6b6b&quot;, &quot;Press R to Restart&quot;);
+        break;
+      case &quot;levelcomplete&quot;:
+        var remaining = Math.max(0, 2 - (Date.now() - state.completeTimer) / 1000);
+        drawOverlay(&quot;LEVEL COMPLETE!&quot;, &quot;#44ff44&quot;, &quot;Next level in &quot; + remaining.toFixed(1) + &quot;s&quot;);
+        break;
+    }
+  }
+
+  // ─── Main Render ──────────────────────────────────────────
+  function render() {
+    // Clear with background color
+    ctx.fillStyle = &quot;#0a0a1a&quot;;
+    ctx.fillRect(0, 0, W, H);
+
+    drawStarfield();
+    drawAsteroids();
+    drawProjectiles();
+    drawParticles();
+    drawShip();
+    drawHUD();
+
+    if (state.status !== &quot;playing&quot;) {
+      drawStatusOverlay();
+    }
+  }
+
+  // ─── Game Loop ──────────────────────────────────────────────
+  var lastTime = performance.now();
+  var paused = false;
+
+  function gameLoop(timestamp) {
+    requestAnimationFrame(gameLoop);
+
+    if (paused) return;
+
+    // Delta time calculation (for future use — currently per-frame physics as specified)
+    var dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Restart with R key — always active, even during game over screens
+    if (pressedKeys[&quot;r&quot;] || pressedKeys[&quot;R&quot;]) {
+      resetGame(true);
+      pressedKeys[&quot;r&quot;] = false;
+      pressedKeys[&quot;R&quot;] = false;
+    }
+
+    updateShip();
+    updateProjectiles();
+    updateAsteroids();
+    updateParticles();
+    checkCollisions();
+    checkLevelComplete();
+    render();
+  }
+
+  // ─── Page Visibility API (pause/resume) ──────────────────────
+  document.addEventListener(&quot;visibilitychange&quot;, function () {
+    if (document.hidden) {
+      paused = true;
+    } else {
+      paused = false;
+      lastTime = performance.now(); // reset to avoid large delta on resume
+    }
+  });
+
+  // ─── Initialize &amp; Start ──────────────────────────────────────
+  resetGame(true);
+  requestAnimationFrame(gameLoop);
+
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ {}" href="vibe-coding/games/asteroid-clone/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" style="--delay: 140ms">
+      <div class="card-art"><iframe src="vibe-coding/games/asteroid-clone/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" title="Preview of Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
+      <div class="card-copy"><span class="eyebrow">Asteroid Clone</span><h2>Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp</h2><p>A small work in progress.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>
 <a class="project-card" data-search="vibe-coding/games/flight-simulator qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html &lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;en&quot;&gt;
@@ -2688,7 +4840,7 @@ document.body.appendChild(hudDiv);
 
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt; {}" href="vibe-coding/games/flight-simulator/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" style="--delay: 70ms">
+&lt;/html&gt; {}" href="vibe-coding/games/flight-simulator/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" style="--delay: 210ms">
       <div class="card-art"><iframe src="vibe-coding/games/flight-simulator/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" title="Preview of Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Flight Simulator</span><h2>Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp</h2><p>A vibe-coded flight simulator using qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp model.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>
@@ -4292,7 +6444,7 @@ animate();
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
- {}" href="vibe-coding/games/galaxy/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" style="--delay: 140ms">
+ {}" href="vibe-coding/games/galaxy/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" style="--delay: 280ms">
       <div class="card-art"><iframe src="vibe-coding/games/galaxy/qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp.html" title="Preview of Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Galaxy</span><h2>Qwen3.6 27b Claude Opus Deepseek Distilled Imatrix Mtp</h2><p>A vibe-coded galaxy explorer game using qwen3.6-27b-claude-opus-deepseek-distilled-imatrix-mtp model.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>
@@ -6090,7 +8242,7 @@ document.body.appendChild(hudDiv);
 
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt; {}" href="vibe-coding/games/flight-simulator/qwen3.6-27b-mtp.html" style="--delay: 210ms">
+&lt;/html&gt; {}" href="vibe-coding/games/flight-simulator/qwen3.6-27b-mtp.html" style="--delay: 350ms">
       <div class="card-art"><iframe src="vibe-coding/games/flight-simulator/qwen3.6-27b-mtp.html" title="Preview of Qwen3.6 27b Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Flight Simulator</span><h2>Qwen3.6 27b Mtp</h2><p>A vibe-coded flight simulator using qwen3.6-27b-mtp model</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>
@@ -6924,7 +9076,7 @@ function loop() {
 loop();
 &lt;/script&gt;
 &lt;/body&gt;
-&lt;/html&gt; {}" href="vibe-coding/games/typing-game/qwen3.6-27b-mtp.html" style="--delay: 280ms">
+&lt;/html&gt; {}" href="vibe-coding/games/typing-game/qwen3.6-27b-mtp.html" style="--delay: 420ms">
       <div class="card-art"><iframe src="vibe-coding/games/typing-game/qwen3.6-27b-mtp.html" title="Preview of Qwen3.6 27b Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Typing Game</span><h2>Qwen3.6 27b Mtp</h2><p>A vibe-coded typing game using qwen3.6-27b-mtp model.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a>
@@ -8133,7 +10285,7 @@ init();
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
- {}" href="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" style="--delay: 350ms">
+ {}" href="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" style="--delay: 490ms">
       <div class="card-art"><iframe src="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" title="Preview of Qwen3.6 35b A3b Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Cod Clone</span><h2>Qwen3.6 35b A3b Mtp</h2><p>A vibe-coded COD-clone using qwen3.6-35b-a3b-mtp model</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a></div></section></section>
