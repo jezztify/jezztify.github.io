@@ -1,0 +1,67 @@
+I want a runnable browser game implementing a version of the classic "Asteroids" game. Use a single self-contained HTML file with embedded CSS and JavaScript. Do not use external assets, network requests, third-party libraries, or build tools.
+
+[CONSTRAINT 1] PAGE & SETUP
+- Create an 800x600 game area rendered with an HTML5 `<canvas>`.
+- The page title and visible game title should be "Asteroids".
+- The canvas should be non-resizable at its logical resolution, while remaining centered on the page and scaling down gracefully on small screens.
+- No sound or music is required.
+- Draw all graphics programmatically with the Canvas 2D API.
+- Render a subtle, deterministic starfield in the background.
+
+[CONSTRAINT 2] SHIP PHYSICS & CONTROLS
+- Ship: an elongated triangle, 20px wide and 30px tall, centered at the start of each game.
+- Left/Right arrow keys rotate continuously at 5 degrees per rendered frame.
+- Up arrow applies acceleration of 0.3 px/frame² in the ship's facing direction.
+- Maximum ship speed is 8 px/frame. Apply linear friction of 0.98/frame when thrust is not pressed.
+- The ship wraps around all canvas edges.
+- Prevent browser scrolling while game controls are pressed.
+- Provide a short visible controls hint in the page UI.
+
+[CONSTRAINT 3] PROJECTILES
+- Space bar fires a projectile from the ship's tip.
+- Projectile initial velocity equals the ship's current velocity plus 6 px/frame in the ship's facing direction.
+- Allow a maximum of 3 projectiles on screen at once; ignore additional fire presses while at the limit.
+- Projectiles travel exactly 1000 px from their spawn point, measured by distance traveled, then disappear.
+- Draw projectiles as small circles or squares.
+- Projectiles wrap around canvas edges while they are active.
+- Because of screen wrapping, a projectile can hit the player's own ship and cause Game Over. Display "FRIENDLY FIRE! - Press R to Restart".
+
+[CONSTRAINT 4] ASTEROIDS
+- Start with 5 large asteroids (radius 40px), placed randomly away from the ship.
+- Give large asteroids random directions and speeds from 1.5 to 2.5 px/frame.
+- On projectile hit, split an asteroid into 2-3 smaller asteroids with radius equal to the parent radius divided by 1.5 and speed multiplied by 1.2.
+- Asteroids smaller than radius 15px are destroyed on hit and do not split further.
+- Asteroids wrap around all canvas edges.
+- Do not perform collision detection between asteroids; they pass through each other.
+
+[CONSTRAINT 5] COLLISIONS & GAME FLOW
+- A ship-asteroid collision causes Game Over and displays "GAME OVER - Press R to Restart".
+- When all asteroids are destroyed, display a level-complete status and wait 2 seconds before starting the next level.
+- Each next level adds 2 starting asteroids and increases the base asteroid speed by 0.3 px/frame while preserving the split rules.
+- Pressing R restarts at Level 1 with the original settings.
+- Pause the simulation when the browser tab is hidden and resume safely when it becomes visible again.
+
+[CONSTRAINT 6] OUTPUT FORMAT
+- Output a single source file named `index.html`.
+- The game must run by opening `index.html` directly in a modern desktop browser; no local server is required.
+- Keep HTML, CSS, and JavaScript in that one file.
+- Use `requestAnimationFrame` for the main loop and calculate movement from a frame-time delta so gameplay remains stable across refresh rates.
+
+[CONSTRAINT 7] GRAPHICS & EFFECTS
+- Asteroids must have irregular polygonal silhouettes rather than simple circles.
+- Asteroid splits must trigger an explosion with colourful particle effects that fade over time.
+- When thrust is active, draw a small red triangle behind the ship as a thruster flame.
+- Use a restrained arcade colour palette with readable HUD text for score, level, and active projectile count.
+
+[CONSTRAINT 8] CREATIVE BONUS FEATURE
+- Add exactly one optional bonus feature that enhances gameplay.
+- Toggle the feature at runtime with the B key: press once to enable it and again to disable it.
+- The feature must not require external assets, network access, or additional dependencies.
+- The bonus feature should deliberately violate at least one other constraint and must be clearly indicated in the HUD while enabled.
+- Suitable examples include: allowing more than 3 projectiles, disabling friendly-fire damage, enabling asteroid-asteroid collisions, replacing wrapping with bouncing, adding enemy ships, or firing a three-shot arc.
+
+[ACCEPTANCE CRITERIA]
+- Opening `index.html` displays a playable Asteroids game without console errors.
+- Arrow-key movement, Space firing, R restart, and B bonus toggling work as specified.
+- The game visibly demonstrates wrapping, asteroid splitting, particles, collisions, level progression, and both Game Over messages.
+- The implementation uses only browser APIs available in a modern browser and contains no external imports or asset references.

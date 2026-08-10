@@ -1,0 +1,912 @@
+# HTML5 2048 Game Requirements
+
+## 1. Project Overview
+
+Recreate the classic 2048 puzzle game as a self-contained HTML5 web game.
+
+The game must reproduce the original core experience:
+
+- A 4×4 grid.
+- Numbered tiles containing powers of two.
+- Keyboard, touch, and pointer controls.
+- Tile movement and merging.
+- Score and best-score tracking.
+- Persistent game state.
+- Win and game-over states.
+- Responsive desktop and mobile layouts.
+- Animated tile movement, creation, merging, and score updates.
+
+The implementation should use standard browser technologies:
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- Browser `localStorage`
+- No server-side runtime required
+
+The game should run by opening `index.html` in a modern browser or serving the project with any static file server.
+
+---
+
+## 2. Goals
+
+### 2.1 Primary Goals
+
+1. Recreate the gameplay behavior of the original 2048 implementation.
+2. Provide a responsive, mobile-friendly browser experience.
+3. Preserve game state and best score between sessions.
+4. Keep the game playable without external services or a backend.
+5. Maintain a clean separation between game logic, input handling, rendering, and persistence.
+
+### 2.2 Non-Goals
+
+The initial implementation does not need to include:
+
+- User accounts.
+- Online leaderboards.
+- Multiplayer.
+- Undo or redo.
+- Cloud synchronization.
+- Configurable board sizes.
+- Themes or custom tile sets.
+- Analytics.
+- Advertisements.
+- Server-side APIs.
+
+---
+
+## 3. Recommended Technical Architecture
+
+Use a modular vanilla JavaScript architecture modeled around the following components:
+
+```text
+src/
+  game-manager.js          Game lifecycle and move logic
+  grid.js                  Grid storage and cell operations
+  tile.js                  Tile state and serialization
+  input-manager.js         Keyboard, touch, and pointer input
+  html-actuator.js         DOM rendering and animations
+  storage-manager.js       localStorage persistence
+  application.js           Application bootstrap
+public/
+  index.html               Game markup
+  styles/
+    main.css               Compiled or standalone CSS
+    main.scss              Optional SCSS source
+  assets/
+    favicon.ico
+    apple-touch-icon.png
+```
+
+The game may use DOM elements and CSS transforms instead of an HTML5 canvas. This is preferred for reproducing the original implementation's tile animations and responsive styling.
+
+---
+
+## 4. Required User Interface
+
+## 4.1 Page Structure
+
+The main page must contain:
+
+- Game title: `2048`
+- Current score display
+- Best score display
+- Short gameplay instruction
+- New Game button
+- Game board
+- Game-over overlay
+- Win overlay
+- Retry button
+- Keep Playing button
+- Detailed instructions below the board
+
+Recommended HTML structure:
+
+```html
+<main class="container">
+  <header class="heading">
+    <h1 class="title">2048</h1>
+
+    <div class="scores-container">
+      <div class="score-container" aria-label="Score">0</div>
+      <div class="best-container" aria-label="Best score">0</div>
+    </div>
+  </header>
+
+  <section class="above-game">
+    <p class="game-intro">
+      Join the numbers and get to the <strong>2048 tile!</strong>
+    </p>
+
+    <button class="restart-button" type="button">
+      New Game
+    </button>
+  </section>
+
+  <section class="game-container" aria-label="2048 game board">
+    <div class="game-message" role="status" aria-live="polite">
+      <p></p>
+
+      <div class="lower">
+        <button class="keep-playing-button" type="button">
+          Keep going
+        </button>
+        <button class="retry-button" type="button">
+          Try again
+        </button>
+      </div>
+    </div>
+
+    <div class="grid-container"></div>
+    <div class="tile-container"></div>
+  </section>
+</main>
+```
+
+## 4.2 Board Layout
+
+The board must:
+
+- Render four rows and four columns.
+- Display 16 fixed background cells.
+- Render active tiles above the background cells.
+- Use consistent spacing between cells.
+- Use rounded corners.
+- Prevent text selection while interacting with the board.
+- Prevent browser scrolling during touch gestures on the game board.
+
+The default desktop board should be approximately 500×500 pixels.
+
+The mobile board should scale to approximately 280×280 pixels or fit the available viewport width.
+
+---
+
+## 5. Game Rules
+
+## 5.1 Initial State
+
+When a new game starts:
+
+1. Create an empty 4×4 grid.
+2. Set the score to `0`.
+3. Set `over` to `false`.
+4. Set `won` to `false`.
+5. Set `keepPlaying` to `false`.
+6. Add exactly two starting tiles.
+7. Each starting tile must be:
+   - `2` with a 90% probability.
+   - `4` with a 10% probability.
+8. Place each starting tile in a random empty cell.
+
+## 5.2 Tile Movement
+
+Support four movement directions:
+
+```text
+0 = Up
+1 = Right
+2 = Down
+3 = Left
+```
+
+For every valid move:
+
+1. Traverse cells in the direction of movement.
+2. Move each tile as far as possible.
+3. Merge adjacent tiles with equal values.
+4. Prevent a tile from merging more than once during a single move.
+5. Add the merged tile value to the score.
+6. Add one new random tile after the move.
+7. Check for win and game-over conditions.
+8. Save the updated state.
+9. Update the visual interface.
+
+If a movement does not change the board:
+
+- Do not add a new tile.
+- Do not change the score.
+- Do not save a new state.
+- Do not trigger movement animations.
+
+## 5.3 Tile Merging
+
+When two tiles with the same value collide:
+
+```text
+2 + 2       = 4
+4 + 4       = 8
+8 + 8       = 16
+...
+1024 + 1024 = 2048
+```
+
+The merged tile must:
+
+- Occupy the destination cell.
+- Have a value equal to the sum of the two source tiles.
+- Increase the score by its new value.
+- Trigger a merge animation.
+- Be marked so it cannot merge again during the same movement.
+
+Example:
+
+```text
+[2, 2, 2, 0] moving left
+=> [4, 2, 0, 0]
+```
+
+The three original tiles must not become an `8` during one move.
+
+## 5.4 New Random Tiles
+
+After every valid move, add exactly one tile to a random available cell.
+
+The new tile must:
+
+- Have a value of `2` or `4`.
+- Use the same 90%/10% probability distribution as initial tiles.
+- Be marked as newly created for animation purposes.
+
+Do not add a tile if the move was invalid or did not change the board.
+
+## 5.5 Winning
+
+The game is considered won when a tile with value `2048` is created.
+
+On winning:
+
+- Display a win overlay.
+- Display the text `You win!`.
+- Provide a `Keep going` button.
+- Provide a `Try again` button.
+- Stop accepting movement input until the player chooses to continue or restart.
+
+If the player selects `Keep going`:
+
+- Hide the win overlay.
+- Set `keepPlaying` to `true`.
+- Continue allowing moves.
+- Allow tiles greater than 2048.
+
+The player must be able to continue beyond 2048.
+
+## 5.6 Game Over
+
+The game is over when:
+
+1. The grid has no empty cells, and
+2. No adjacent equal tiles can be merged.
+
+On game over:
+
+- Display a game-over overlay.
+- Display the text `Game over!`.
+- Provide a `Try again` button.
+- Stop accepting movement input until the player starts a new game.
+
+---
+
+## 6. Data Model
+
+## 6.1 Tile
+
+Each tile must contain:
+
+```javascript
+{
+  x: 0,
+  y: 0,
+  value: 2,
+  previousPosition: null,
+  mergedFrom: null
+}
+```
+
+Required tile behavior:
+
+- Store its current coordinates.
+- Store its numeric value.
+- Store its previous position before movement.
+- Track source tiles when created by a merge.
+- Serialize itself for persistence.
+
+Required methods:
+
+```javascript
+savePosition()
+updatePosition(position)
+serialize()
+```
+
+## 6.2 Grid
+
+The grid must contain:
+
+```javascript
+{
+  size: 4,
+  cells: [
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null],
+    [null, null, null, null]
+  ]
+}
+```
+
+Required grid operations:
+
+```javascript
+empty()
+fromState(state)
+randomAvailableCell()
+availableCells()
+eachCell(callback)
+cellsAvailable()
+cellAvailable(cell)
+cellOccupied(cell)
+cellContent(cell)
+insertTile(tile)
+removeTile(tile)
+withinBounds(position)
+serialize()
+```
+
+The grid coordinate system must remain consistent throughout the application:
+
+- `x`: column index
+- `y`: row index
+- Valid values: `0` through `3`
+
+## 6.3 Game State
+
+The complete saved game state must contain:
+
+```javascript
+{
+  grid: {
+    size: 4,
+    cells: []
+  },
+  score: 0,
+  over: false,
+  won: false,
+  keepPlaying: false
+}
+```
+
+---
+
+## 7. Game Manager Requirements
+
+Implement a central game manager responsible for:
+
+- Initializing the game.
+- Loading a saved game.
+- Starting a new game.
+- Restarting the game.
+- Handling movement.
+- Adding random tiles.
+- Detecting available moves.
+- Detecting game-over conditions.
+- Detecting the 2048 win condition.
+- Updating the score.
+- Serializing game state.
+- Coordinating input, rendering, and storage.
+
+Recommended public methods:
+
+```javascript
+restart()
+keepPlaying()
+isGameTerminated()
+setup()
+addStartTiles()
+addRandomTile()
+actuate()
+serialize()
+prepareTiles()
+moveTile(tile, cell)
+move(direction)
+getVector(direction)
+buildTraversals(vector)
+findFarthestPosition(cell, vector)
+movesAvailable()
+tileMatchesAvailable()
+positionsEqual(first, second)
+```
+
+The game manager must not directly manipulate DOM elements. It should communicate with the renderer through a defined actuator interface.
+
+---
+
+## 8. Input Requirements
+
+## 8.1 Keyboard Input
+
+Support:
+
+- Arrow Up
+- Arrow Right
+- Arrow Down
+- Arrow Left
+
+Also support the following alternative controls:
+
+```text
+W = Up
+D = Right
+S = Down
+A = Left
+
+K = Up
+L = Right
+J = Down
+H = Left
+```
+
+Keyboard requirements:
+
+- Prevent browser scrolling when a supported movement key is pressed.
+- Ignore movement keys when modifier keys are pressed.
+- Support `R` to restart the game.
+- Prevent keyboard input when the game is terminated.
+- Preserve normal browser behavior for unrelated keys.
+
+## 8.2 Touch and Pointer Input
+
+Support swipe gestures on the game board.
+
+Requirements:
+
+- Track the starting touch or pointer coordinate.
+- Track the ending coordinate.
+- Ignore multi-touch gestures.
+- Prevent browser scrolling while interacting with the board.
+- Trigger a move only when the swipe distance is greater than 10 pixels.
+- Choose the dominant axis:
+  - Horizontal movement produces left/right.
+  - Vertical movement produces up/down.
+- Use the swipe direction to emit a movement event.
+
+The implementation should support modern Pointer Events. A touch-event fallback may be included for compatibility.
+
+## 8.3 Buttons
+
+The following controls must work with mouse, keyboard, and touch:
+
+- New Game
+- Try again
+- Keep going
+
+Buttons must use `<button>` elements or provide equivalent keyboard accessibility.
+
+---
+
+## 9. Rendering Requirements
+
+## 9.1 Rendering Strategy
+
+Use a separate HTML actuator or renderer that:
+
+- Receives the current grid and game metadata.
+- Updates the tile container.
+- Updates the score.
+- Updates the best score.
+- Displays or hides game status overlays.
+- Uses `requestAnimationFrame` for visual updates.
+
+The renderer must not own game rules.
+
+## 9.2 Tile DOM Structure
+
+Each tile should render using a wrapper and inner element:
+
+```html
+<div class="tile tile-2 tile-position-1-1 tile-new">
+  <div class="tile-inner">2</div>
+</div>
+```
+
+Required classes:
+
+- `tile`
+- `tile-{value}`
+- `tile-position-{x}-{y}`
+- `tile-new`
+- `tile-merged`
+- `tile-super` for values greater than 2048
+
+The inner element must display the tile value.
+
+## 9.3 Tile Positioning
+
+Use CSS transforms to position tiles.
+
+For a 4×4 board, position classes must exist for:
+
+```text
+tile-position-1-1 through tile-position-4-4
+```
+
+Coordinates must be normalized from zero-based game coordinates to one-based CSS position classes.
+
+Example:
+
+```javascript
+positionClass({ x: 0, y: 0 }) === "tile-position-1-1";
+```
+
+## 9.4 Animations
+
+Implement the following animations:
+
+### New Tile
+
+- Start at zero scale and zero opacity.
+- Animate to full size and full opacity.
+- Duration: approximately 200ms.
+
+### Tile Movement
+
+- Animate using CSS `transform`.
+- Duration: approximately 100ms.
+- Use an ease-in-out timing function.
+
+### Merged Tile
+
+- Scale from zero to approximately 1.2 and back to 1.
+- Duration: approximately 200ms.
+- Render above normal tiles during the animation.
+
+### Score Addition
+
+When the score increases:
+
+- Display a temporary `+N` indicator.
+- Animate it upward.
+- Fade it out.
+- Duration: approximately 600ms.
+
+### Game Message
+
+- Fade in the win or game-over overlay.
+- Use a translucent overlay over the board.
+- Use a gold-tinted overlay for the win state.
+
+---
+
+## 10. Scoring Requirements
+
+The score starts at `0`.
+
+When tiles merge:
+
+```javascript
+score += mergedTile.value;
+```
+
+Examples:
+
+```text
+2 + 2   => score increases by 4
+8 + 8   => score increases by 16
+128+128 => score increases by 256
+```
+
+The current score must:
+
+- Update immediately after a valid move.
+- Display the score addition animation.
+- Persist as part of the saved game state.
+
+The best score must:
+
+- Persist independently from the current game.
+- Update whenever the current score exceeds it.
+- Remain available after a restart.
+- Display on page load.
+
+---
+
+## 11. Persistence Requirements
+
+Use browser `localStorage`.
+
+Required storage keys:
+
+```text
+bestScore
+gameState
+```
+
+The storage manager must:
+
+- Detect whether `localStorage` is available.
+- Fall back to an in-memory storage implementation when unavailable.
+- Store the best score.
+- Store the serialized current game state.
+- Load the saved game state on startup.
+- Clear the saved game state when the game ends.
+- Clear the saved game state when starting a new game.
+
+Recommended API:
+
+```javascript
+getBestScore()
+setBestScore(score)
+getGameState()
+setGameState(gameState)
+clearGameState()
+```
+
+Malformed saved state must not prevent the game from starting. If parsing fails, discard the invalid state and initialize a new game.
+
+---
+
+## 12. Responsive Design Requirements
+
+## 12.1 Desktop
+
+For viewport widths above approximately 520 pixels:
+
+- Board width: approximately 500 pixels.
+- Board height: approximately 500 pixels.
+- Grid spacing: approximately 15 pixels.
+- Tile text should be large and readable.
+- Page content should be centered.
+- Title should be visually prominent.
+- Score and best-score panels should appear beside the title.
+
+## 12.2 Mobile
+
+For viewport widths below approximately 520 pixels:
+
+- Board width: approximately 280 pixels or available width minus page padding.
+- Grid spacing: approximately 10 pixels.
+- Reduce page margins.
+- Reduce title size.
+- Reduce score-panel padding.
+- Place the instructions and New Game button side by side.
+- Reduce tile font size for three- and four-digit values.
+- Reduce overlay text size.
+- Prevent horizontal overflow.
+- Support portrait and landscape orientations.
+
+## 12.3 Accessibility
+
+The implementation should:
+
+- Use semantic HTML.
+- Provide accessible labels for score and best score.
+- Use `aria-live="polite"` for status messages.
+- Ensure buttons are keyboard accessible.
+- Maintain visible focus states.
+- Provide sufficient color contrast.
+- Avoid relying on color alone to communicate game state.
+- Ensure the game remains understandable without animation.
+
+---
+
+## 13. Visual Design Requirements
+
+Use a visual style based on the classic 2048 design:
+
+```text
+Page background:       #faf8ef
+Primary text:          #776e65
+Bright tile text:      #f9f6f2
+Board background:      #bbada0
+Base tile background:  #eee4da
+Gold tile color:       #edc22e
+```
+
+The design should include:
+
+- A bold `2048` title.
+- Rounded board and tile corners.
+- Dark score panels.
+- High-contrast bright text for high-value tiles.
+- Tile colors that change progressively as values increase.
+- Special styling for values greater than 2048.
+- A translucent game-state overlay.
+
+Suggested tile color progression:
+
+```text
+2:    #eee4da
+4:    #ede0c8
+8:    orange
+16:   deep orange
+32:   red-orange
+64:   red
+128:  gold-tinted
+256:  gold-tinted
+512:  gold-tinted
+1024: gold-tinted
+2048: bright gold
+>2048: dark special color
+```
+
+---
+
+## 14. Application Bootstrap
+
+The application must initialize after the browser is ready to render.
+
+Recommended bootstrap flow:
+
+```javascript
+window.requestAnimationFrame(function () {
+  new GameManager(
+    4,
+    InputManager,
+    HTMLActuator,
+    LocalStorageManager
+  );
+});
+```
+
+Initialization must:
+
+1. Create the input manager.
+2. Create the HTML actuator.
+3. Create the storage manager.
+4. Connect input events to game-manager actions.
+5. Load saved state if available.
+6. Render the initial board.
+7. Display the current score and best score.
+
+---
+
+## 15. Browser Compatibility
+
+The game must work in current versions of:
+
+- Chrome
+- Firefox
+- Safari
+- Edge
+- Mobile Safari
+- Mobile Chrome
+
+Optional compatibility support may include:
+
+- Pointer Events fallback.
+- `requestAnimationFrame` fallback.
+- `classList` fallback.
+- `Function.prototype.bind` fallback.
+
+Modern implementations may omit legacy polyfills if the supported browser matrix is explicitly limited to current browsers.
+
+---
+
+## 16. File and Asset Requirements
+
+Minimum files:
+
+```text
+index.html
+styles/main.css
+js/application.js
+js/game-manager.js
+js/grid.js
+js/tile.js
+js/input-manager.js
+js/html-actuator.js
+js/storage-manager.js
+```
+
+Optional files:
+
+```text
+styles/main.scss
+styles/helpers.scss
+assets/favicon.ico
+assets/apple-touch-icon.png
+README.md
+LICENSE
+```
+
+The game must not require:
+
+- A build system.
+- A package manager.
+- A backend.
+- External JavaScript libraries.
+- External fonts or remote assets for core functionality.
+
+---
+
+## 17. Testing Requirements
+
+## 17.1 Unit Tests
+
+Test the following:
+
+- Empty grid creation.
+- Grid serialization and restoration.
+- Random available-cell selection.
+- Tile serialization.
+- Tile movement.
+- Tile merging.
+- Multiple merges in one row.
+- Prevention of double merging.
+- Invalid movement detection.
+- Available-move detection.
+- Win detection.
+- Game-over detection.
+- Score calculation.
+- State persistence.
+- Best-score persistence.
+
+## 17.2 Gameplay Acceptance Tests
+
+### Initial Game
+
+- A new game displays exactly two tiles.
+- Each tile is either `2` or `4`.
+- The board contains 14 empty cells.
+
+### Movement
+
+- Arrow keys move tiles in all four directions.
+- WASD and HJKL controls work.
+- Swipes move tiles on touch devices.
+- Invalid moves do not create new tiles.
+- Valid moves create exactly one new tile.
+
+### Merging
+
+- Equal adjacent tiles merge correctly.
+- Unequal tiles do not merge.
+- A tile cannot merge twice during one move.
+- Score increases by the merged tile's value.
+
+### Win State
+
+- Creating a 2048 tile displays `You win!`.
+- The player can choose `Keep going`.
+- The player can continue creating values above 2048.
+- The player can restart from the win screen.
+
+### Game Over
+
+- The game-over overlay appears when no valid moves remain.
+- The player can select `Try again`.
+- A new game resets the board and score.
+
+### Persistence
+
+- Refreshing the page restores the current game.
+- Best score survives a restart.
+- Best score survives a page refresh.
+- Invalid saved data does not crash the game.
+
+### Responsive Behavior
+
+- The board fits on a mobile viewport.
+- Touch movement does not scroll the page.
+- Text remains readable on small screens.
+- Desktop and mobile layouts retain the same gameplay behavior.
+
+---
+
+## 18. Definition of Done
+
+The recreation is complete when:
+
+- The game runs from a static HTML5 page.
+- The board is 4×4.
+- Two starting tiles are created.
+- All four movement directions work.
+- Equal tiles merge correctly.
+- Score and best score are displayed.
+- Win and game-over states are implemented.
+- The player can continue after winning.
+- Game state persists using `localStorage`.
+- Keyboard and touch controls work.
+- Tile movement and merge animations work.
+- The layout is responsive.
+- The implementation does not require a backend or external dependency.
+- Automated or manual acceptance tests pass for the core gameplay scenarios.
