@@ -10,10 +10,10 @@
   </style>
 </head>
 <body>
-  <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 11 projects</nav></header>
+  <header class="shell topbar"><a class="brand" href="./">Jezztify</a><nav>Selected hobby works · 12 projects</nav></header>
   <main class="shell">
     <section class="hero"><span class="kicker">An evolving archive</span><h1>Made for the <em>joy</em> of making.</h1><p>A growing collection of experiments, useful little tools, and things made just because they seemed worth making.</p></section>
-    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">11 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">11 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/asteroid-clone gemma-4-12-b-qat.html gemma-4-12-b-qat.html &lt;!DOCTYPE html&gt;
+    <section aria-labelledby="collection-title"><div class="collection-head"><h2 id="collection-title">The collection</h2><span class="count">12 works</span></div><div class="search-wrap"><label for="project-search">Search the collection</label><input id="project-search" type="search" placeholder="Try a folder, model, or keyword…" autocomplete="off"><span id="search-status" role="status" aria-live="polite"></span></div><section class="collection-section" aria-labelledby="section-games"><div class="collection-head"><h2 id="section-games">Games</h2><span class="count">12 works</span></div><div class="grid"><a class="project-card" data-search="vibe-coding/games/asteroid-clone gemma-4-12-b-qat.html gemma-4-12-b-qat.html &lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;en&quot;&gt;
 &lt;head&gt;
     &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -8323,6 +8323,635 @@ if (typeof module !== &#39;undefined&#39; &amp;&amp; module.exports) {
   &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
+ qwen3.8-27b-no-think.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot; /&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; /&gt;
+&lt;title&gt;Sudoku&lt;/title&gt;
+&lt;style&gt;
+  :root {
+    --bg: #f4f6fb;
+    --panel: #ffffff;
+    --ink: #1e2333;
+    --muted: #7a8199;
+    --line: #d5dae6;
+    --grid-thick: #3b425c;
+    --accent: #4f6df5;
+    --accent-soft: #eef1fe;
+    --given: #1e2333;
+    --user: #4f6df5;
+    --error-bg: #ffe8ec;
+    --error-text: #d92b4a;
+    --hint-flash: #fff3bf;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: &quot;Segoe UI&quot;, system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border-radius: 18px;
+    box-shadow: 0 18px 50px rgba(30, 35, 51, .12);
+    padding: 24px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  h1 { font-size: 26px; letter-spacing: .5px; }
+  h1 span { color: var(--accent); }
+
+  .stats { display: flex; gap: 10px; align-items: center; }
+
+  .stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    min-width: 74px;
+  }
+  .stat b { display: block; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- Board ---- */
+  .board-wrap { position: relative; margin-bottom: 18px; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 3px solid var(--grid-thick);
+    border-radius: 8px;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(16px, 4.2vw, 26px);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    background: #fff;
+    transition: background .08s ease;
+  }
+
+  /* thick lines every 3 cells */
+  .cell:nth-child(9n)   { border-right: none; }
+  .cell.c2, .cell.c5    { border-right: 2px solid var(--grid-thick); }
+  .cell.r2, .cell.r5    { border-bottom: 2px solid var(--grid-thick); }
+
+  /* box shading for visual grouping */
+  .cell.box-a { background: #fbfcff; }
+
+  .cell.selected   { background: var(--accent-soft) !important; }
+  .cell.peer       { background: #f3f5fd; }
+  .cell.same-num   { box-shadow: inset 0 0 0 2px rgba(79,109,245,.35); }
+
+  .cell.given span.val { color: var(--given); font-weight: 600; }
+  .cell.user  span.val { color: var(--user); font-weight: 600; }
+  .cell.error { background: var(--error-bg) !important; }
+  .cell.error span.val { color: var(--error-text); }
+
+  @keyframes flash {
+    0%   { box-shadow: inset 0 0 0 3px #f5b400, 0 0 12px rgba(245,180,0,.6); background: var(--hint-flash); }
+    100% { box-shadow: none; }
+  }
+  .cell.hint { animation: flash 1.1s ease-out; }
+
+  /* pencil notes */
+  .notes {
+    position: absolute;
+    inset: 2px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    pointer-events: none;
+  }
+  .notes span {
+    font-size: clamp(7px, 1.6vw, 10px);
+    color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+
+  /* ---- Controls ---- */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr) auto / span 10;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  button.num {
+    aspect-ratio: 1/1.25;
+    border: none;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: clamp(16px, 3vw, 20px);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform .05s ease, background .12s ease;
+  }
+  button.num:hover { background: var(--accent-soft); color: var(--accent); }
+  button.num:active { transform: scale(.94); }
+
+  .tools { display: flex; gap: 8px; margin-bottom: 6px; }
+  .tool-btn {
+    flex: 1;
+    border: none;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13.5px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .12s ease, transform .05s ease;
+  }
+  .tool-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .tool-btn:active { transform: scale(.97); }
+
+  /* number pad remaining counts */
+  button.num small { display:block; font-size:10px; color:var(--muted); font-weight:500; margin-top:-2px;}
+  button.num.done { opacity:.4; pointer-events:none; background:#eef7ee; }
+
+  .status-bar {
+    text-align:center;
+    min-height: 22px;
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-top: 8px;
+  }
+
+  /* ---- Difficulty + new game row ---- */
+  .top-row { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+  select.diff {
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:7px 10px; border-radius:8px; font-size:13.5px; cursor:pointer;
+  }
+
+  /* ---- Win overlay ---- */
+  .overlay {
+    position:absolute; inset:-24px -24px auto -24px; height: calc(100% + 48px);
+    background: rgba(244,246,251,.92); backdrop-filter: blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    border-radius:18px; z-index:5; opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .overlay.show { opacity:1; pointer-events:auto; }
+  .win-card { text-align:center; background:#fff; padding:26px 34px; border-radius:16px; box-shadow:0 12px 40px rgba(30,35,51,.2); animation:pop .35s ease;}
+  @keyframes pop { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+  .win-card h2 { font-size:24px; margin-bottom:6px; color:var(--accent);}
+  .win-card p { color:var(--muted); font-size:14px; margin-bottom:16px;}
+
+  @media (max-width: 480px) {
+    .app { padding: 16px; }
+    h1 { font-size: 22px; }
+    .stat { min-width: 62px; padding:5px 8px; }
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;app&quot;&gt;
+  &lt;header&gt;
+    &lt;h1&gt;Su&lt;span&gt;doku&lt;/span&gt;&lt;/h1&gt;
+    &lt;div class=&quot;stats&quot;&gt;
+      &lt;div class=&quot;stat&quot;&gt;&lt;b id=&quot;mistakes&quot;&gt;0/3&lt;/b&gt;Mistakes&lt;/div&gt;
+      &lt;div class=&quot;stat&quot;&gt;&lt;b id=&quot;timer&quot;&gt;0:00&lt;/b&gt;Time&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;top-row&quot; style=&quot;margin-bottom:14px;&quot;&gt;
+    &lt;select class=&quot;diff&quot; id=&quot;difficulty&quot; title=&quot;Difficulty (applies to next game)&quot;&gt;
+      &lt;option value=&quot;easy&quot;&gt;Easy&lt;/option&gt;
+      &lt;option value=&quot;medium&quot; selected&gt;Medium&lt;/option&gt;
+      &lt;option value=&quot;hard&quot;&gt;Hard&lt;/option&gt;
+      &lt;option value=&quot;expert&quot;&gt;Expert&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;button class=&quot;tool-btn&quot; id=&quot;newGame&quot; style=&quot;flex:0 1 auto; padding:8px 16px;&quot;&gt;New Game&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;board-wrap&quot;&gt;
+    &lt;div id=&quot;board&quot;&gt;&lt;/div&gt;
+    &lt;div class=&quot;overlay&quot; id=&quot;winOverlay&quot;&gt;
+      &lt;div class=&quot;win-card&quot;&gt;
+        &lt;h2&gt;Puzzle Solved!&lt;/h2&gt;
+        &lt;p id=&quot;winStats&quot;&gt;&lt;/p&gt;
+        &lt;button class=&quot;tool-btn&quot; id=&quot;playAgain&quot; style=&quot;flex:0 1 auto; padding:9px 22px;&quot;&gt;Play Again&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;tools&quot;&gt;
+    &lt;button class=&quot;tool-btn&quot; data-tool=&quot;erase&quot;&gt;Erase ⌫&lt;/button&gt;
+    &lt;button class=&quot;tool-btn&quot; id=&quot;notesBtn&quot; aria-pressed=&quot;false&quot;&gt;Notes ✎&lt;/button&gt;
+    &lt;button class=&quot;tool-btn&quot; data-tool=&quot;hint&quot;&gt;Hint 💡 (&lt;span id=&quot;hintsLeft&quot;&gt;3&lt;/span&gt;)&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;controls&quot; id=&quot;numPad&quot;&gt;&lt;/div&gt;
+
+  &lt;p class=&quot;status-bar&quot; id=&quot;status&quot;&gt;Select a cell, then type or tap a number.&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+(() =&gt; {
+  &quot;use strict&quot;;
+
+  // ---------- State ----------
+  const SIZE = 9;
+  let solution = [];      // flat array length 81 of solved values (0 empty)
+  let puzzle   = [];      // initial givens, 0 where blank
+  let board    = [];      // current user state, 0 where blank
+  let notes    = [];      // each cell: Set of candidate numbers
+  const givenMask = new Array(81).fill(false);
+
+  let selected = -1;       // index or -1
+  let notesMode = false;
+  let mistakes = 0;
+  const MAX_MISTAKES = 3;
+  let hintsLeft = 3;
+  let won = false;
+
+  let seconds = 0, timerId = null;
+
+  // ---------- DOM refs ----------
+  const boardEl   = document.getElementById(&quot;board&quot;);
+  const numPad    = document.getElementById(&quot;numPad&quot;);
+  const statusEl  = document.getElementById(&quot;status&quot;);
+  const mistakesEl= document.getElementById(&quot;mistakes&quot;);
+  const timerEl   = document.getElementById(&quot;timer&quot;);
+  const hintsLeftEl = document.getElementById(&quot;hintsLeft&quot;);
+  const notesBtn  = document.getElementById(&quot;notesBtn&quot;);
+  const winOverlay= document.getElementById(&quot;winOverlay&quot;);
+
+  // ---------- Puzzle generation (backtracking) ----------
+  function shuffle(arr){ for(let i=arr.length-1;i&gt;0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+  function isValid(grid, idx, val){
+    const r = Math.floor(idx/9), c = idx%9;
+    for(let i=0;i&lt;9;i++){ if(grid[r*9+i]===val) return false; if(grid[i*9+c]===val) return false; }
+    const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++){ if(grid[(br+dr)*9+(bc+dc)]===val) return false; }
+    return true;
+  }
+
+  function fillGrid(grid, idx){
+    if(idx===81) return true;
+    if(grid[idx]!==0) return fillGrid(grid, idx+1);
+    const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+    for(const n of nums){
+      if(isValid(grid, idx, n)){ grid[idx]=n; if(fillGrid(grid,idx+1)) return true; grid[idx]=0; }
+    }
+    return false;
+  }
+
+  function countSolutions(grid, limit=2){
+    // find first empty cell and recurse with solution counting (for uniqueness)
+    let idx=-1;
+    for(let i=0;i&lt;81;i++){ if(grid[i]===0){idx=i;break;} }
+    if(idx===-1) return 1;
+    const r=Math.floor(idx/9), c=idx%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    let count=0;
+    for(let n=1;n&lt;=9;n++){
+      let ok=true;
+      for(let i=0;i&lt;9 &amp;&amp; ok;i++){ if(grid[r*9+i]===n || grid[i*9+c]===n) ok=false; }
+      if(ok){ const rr=Math.floor(r/3)*3, cc=Math.floor(c/3)*3;
+        for(let dr=0;dr&lt;3&amp;&amp;ok;dr++)for(let dc=0;dc&lt;3&amp;&amp;ok;dc++){ if(grid[(rr+dr)*9+(cc+dc)]===n) ok=false; }
+      }
+      if(ok){ grid[idx]=n; count+=countSolutions(grid, limit); grid[idx]=0; if(count&gt;=limit) break; }
+    }
+    return count;
+  }
+
+  function generatePuzzle(difficulty){
+    const targetClues = { easy:42, medium:34, hard:28, expert:25 };
+    let cluesTarget = targetClues[difficulty] ?? 30;
+
+    // Build a full valid solution.
+    const sol = new Array(81).fill(0);
+    fillGrid(sol, 0);
+
+    // Remove cells symmetrically (point symmetry) until we hit the clue count or uniqueness breaks.
+    let grid = sol.slice();
+    let clues = 81;
+    const positions = shuffle([...Array(81).keys()]);
+
+    for(const idx of positions){
+      if(clues &lt;= cluesTarget) break;
+      // try removing this cell and its symmetric partner
+      const symIdx = (8 - Math.floor(idx/9)) * 9 + (8 - (idx % 9));
+      const removedVals = [];
+
+      for(const p of [idx, symIdx]){
+        if(grid[p]!==0){ grid[p]=0; clues--; }
+      }
+
+      // check uniqueness on a copy; if not unique, restore the clues
+      const test = grid.slice();
+      if(countSolutions(test) !== 1){
+        grid[idx]   = sol[idx];
+        grid[symIdx]= sol[symIdx];
+        clues += (sol[idx]!==0 ? 1 : 0) + (sol[symIdx]!==0 &amp;&amp; idx!==symIdx ? 1 : 0);
+      }
+
+      if(clues &lt;= cluesTarget) break;
+    }
+
+    return { solution: sol, puzzle: grid };
+  }
+
+  // ---------- Rendering helpers ----------
+  function cellClass(i){
+    const r=Math.floor(i/9), c=i%9;
+    let cls=&quot;cell&quot;;
+    if(c===2||c===5) cls+=&quot; c&quot;+(c+1);   // thick right border markers (col index 3,6 -&gt; nth-child handled separately)
+    return cls;
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = &quot;&quot;;
+    for(let i=0;i&lt;81;i++){
+      const r=Math.floor(i/9), c=i%9;
+      const div=document.createElement(&quot;div&quot;);
+      div.className=&quot;cell&quot;;
+      // thick borders via nth-child handled in CSS using data attrs:
+      if(c===2||c===5) div.classList.add(&quot;thick-r&quot;);
+      if(r===2||r===5) div.classList.add(&quot;thick-b&quot;);
+      // box shading for 3x3 blocks (checkerboard style on alternating boxes)
+      const br=Math.floor(r/3), bc=Math.floor(c/3);
+      if((br+bc)%2===0) div.classList.add(&quot;box-a&quot;);
+
+      div.dataset.idx=i;
+      div.innerHTML = `&lt;span class=&quot;val&quot;&gt;&lt;/span&gt;&lt;div class=&quot;notes&quot; aria-hidden=&quot;true&quot;&gt;${&quot;&lt;span&gt;&lt;/span&gt;&quot;.repeat(9)}&lt;/div&gt;`;
+      boardEl.appendChild(div);
+    }
+  }
+
+  function renderCell(i){
+    const el=boardEl.children[i];
+    if(!el) return;
+    const valSpan=el.querySelector(&quot;.val&quot;);
+    const notesWrap=el.querySelector(&quot;.notes&quot;);
+    const v=board[i];
+    givenMask[i] ? el.classList.add(&quot;given&quot;) : el.classList.remove(&quot;given&quot;);
+
+    // value or empty
+    valSpan.textContent = v!==0 ? String(v) : &quot;&quot;;
+    if(v===0){
+      el.classList.toggle(&quot;user&quot;, false);
+    } else {
+      el.classList.toggle(&quot;user&quot;, !givenMask[i]);
+    }
+
+    // notes (only shown when cell is empty and not in given)
+    const set=notes[i];
+    let html=&quot;&quot;;
+    for(let n=1;n&lt;=9;n++){ html += `&lt;span&gt;${set.has(n)?n:&quot;&quot;}&lt;/span&gt;`; }
+    notesWrap.innerHTML = v===0 &amp;&amp; !givenMask[i] ? html : &quot;&quot;;
+
+    // error highlight: user value conflicts with solution or duplicates in row/col/box
+    let isErr=false;
+    if(v!==0 &amp;&amp; !givenMask[i]){
+      const r=Math.floor(i/9), c=i%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+      for(let k=0;k&lt;9;k++){
+        if(k===i) continue;
+        if(board[r*9+k]===v || board[k*9+c]===v){ isErr=true; break; }
+      }
+      if(!isErr){ for(let dr=0;dr&lt;3&amp;&amp;!isErr;dr++)for(let dc=0;dc&lt;3&amp;&amp; !isErr;dc++){ const p=(br+dr)*9+(bc+dc); if(p!==i &amp;&amp; board[p]===v) isErr=true; } }
+    }
+    el.classList.toggle(&quot;error&quot;, isErr);
+
+    // selection / peer highlight
+    el.classList.remove(&quot;selected&quot;,&quot;peer&quot;,&quot;same-num&quot;);
+  }
+
+  function renderHighlights(){
+    const sel=boardEl.children[selected];
+    if(selected&lt;0) return;
+    const r=Math.floor(selected/9), c=selected%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let i=0;i&lt;81;i++){
+      boardEl.children[i].classList.remove(&quot;peer&quot;,&quot;same-num&quot;);
+    }
+    const selVal = board[selected];
+    for(let k=0;k&lt;9;k++){
+      if(k!==c) markPeer(r*9+k);
+      if(k!==r) markPeer(k*9+c);
+    }
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++){ const p=(br+dr)*9+(bc+dc); if(p!==selected) boardEl.children[p].classList.add(&quot;peer&quot;); }
+
+    // same number highlight across the whole grid
+    if(selVal!==0){ for(let i=0;i&lt;81;i++) if(board[i]===selVal &amp;&amp; i!==selected) boardEl.children[i].classList.add(&quot;same-num&quot;); }
+
+    sel.classList.add(&quot;selected&quot;);
+  }
+  function markPeer(i){ const el=boardEl.children[i]; if(el) el.classList.add(&quot;peer&quot;); }
+
+  // ---------- Number pad with remaining counts ----------
+  function buildNumPad(){
+    numPad.innerHTML=&quot;&quot;;
+    for(let n=1;n&lt;=9;n++){
+      const b=document.createElement(&quot;button&quot;);
+      b.className=&quot;num&quot;;
+      b.dataset.n=n;
+      b.innerHTML=`${n}&lt;small id=&quot;cnt-${n}&quot;&gt;&lt;/small&gt;`;
+      b.addEventListener(&quot;click&quot;,()=&gt;placeNumber(n));
+      numPad.appendChild(b);
+    }
+  }
+
+  function updateCounts(){
+    for(let n=1;n&lt;=9;n++){
+      let placed=0;
+      for(let i=0;i&lt;81;i++) if(board[i]===n) placed++;
+      const el=document.getElementById(&quot;cnt-&quot;+n);
+      if(el){ el.textContent = 9-placed&gt;0 ? (9-placed) : &quot;&quot;; }
+      numPad.children[n-1].classList.toggle(&quot;done&quot;, placed&gt;=9);
+    }
+  }
+
+  // ---------- Game actions ----------
+  function setStatus(msg, isError=false){ statusEl.textContent=msg; statusEl.style.color = isError? &quot;var(--error-text)&quot; : &quot;var(--muted)&quot;; }
+
+  function placeNumber(n){
+    if(won || selected&lt;0) return;
+    const i=selected;
+    if(givenMask[i]){ setStatus(&quot;That cell is a given clue.&quot;, true); flashError(i); return; }
+
+    // notes mode: toggle candidate
+    if(notesMode &amp;&amp; board[i]===0){
+      notes[i].has(n)?notes[i].delete(n):notes[i].add(n);
+      renderCell(i); updateCounts(); setStatus(&quot;Notes updated.&quot;); return;
+    }
+
+    const val = (board[i]===n) ? 0 : n; // tapping same number clears it
+    board[i]=val;
+    notes[i].clear();
+
+    if(val!==0){
+      if(solution[i]!==val){
+        mistakes++;
+        updateMistakes();
+        setStatus(&quot;That&#39;s not the right value.&quot;, true);
+        flashError(i);
+        if(mistakes&gt;=MAX_MISTAKES) return gameOver(false, &quot;Too many mistakes — game over.&quot;);
+      } else {
+        // clear notes for peers that contain this number (auto-cleanup)
+        autoCleanNotes(i, val);
+        setStatus(&quot;&quot;);
+      }
+    }
+
+    renderCell(i);
+    updateCounts();
+    checkWin();
+  }
+
+  function flashError(i){ const el=boardEl.children[i]; if(el){ el.classList.remove(&quot;hint&quot;); void el.offsetWidth; el.style.transition=&quot;none&quot;; setTimeout(()=&gt;el.style.transition=&quot;&quot;,10);} }
+
+  function autoCleanNotes(idx, val){
+    const r=Math.floor(idx/9), c=idx%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let k=0;k&lt;9;k++){ notes[r*9+k].delete(val); notes[k*9+c].delete(val); }
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++) notes[(br+dr)*9+(bc+dc)].delete(val);
+  }
+
+  function erase(){
+    if(won || selected&lt;0) return;
+    const i=selected;
+    if(givenMask[i]) { setStatus(&quot;Given clues can&#39;t be erased.&quot;, true); return; }
+    board[i]=0; notes[i].clear(); renderCell(i); updateCounts(); setStatus(&quot;&quot;);
+  }
+
+  function useHint(){
+    if(won) return;
+    if(hintsLeft&lt;=0){ setStatus(&quot;No hints left.&quot;, true); return; }
+    // pick a random empty or wrong cell, fill with solution value
+    const candidates=[];
+    for(let i=0;i&lt;81;i++){ if(!givenMask[i] &amp;&amp; board[i]!==solution[i]) candidates.push(i); }
+    if(candidates.length===0){ setStatus(&quot;Nothing to hint — you&#39;re all set!&quot;, true); return; }
+    const pick=candidates[Math.floor(Math.random()*candidates.length)];
+    hintsLeft--; hintsLeftEl.textContent=hintsLeft;
+    board[pick]=solution[pick]; notes[pick].clear(); autoCleanNotes(pick, solution[pick]);
+    selected=pick; renderCell(pick); updateCounts(); renderHighlights();
+    const el=boardEl.children[pick]; el.classList.remove(&quot;hint&quot;); void el.offsetWidth; el.classList.add(&quot;hint&quot;);
+    setStatus(`Hint: ${solution[pick]} goes here.`);
+    checkWin();
+  }
+
+  function toggleNotes(){
+    notesMode=!notesMode;
+    notesBtn.setAttribute(&quot;aria-pressed&quot;, String(notesMode));
+    notesBtn.style.background = notesMode? &quot;var(--accent)&quot; : &quot;&quot;;
+    notesBtn.style.color      = notesMode? &quot;#fff&quot; : &quot;&quot;;
+    setStatus(notesMode?&quot;Notes mode ON — tap numbers to mark candidates.&quot;:&quot;Notes mode OFF.&quot;);
+  }
+
+  function updateMistakes(){ mistakesEl.textContent=`${mistakes}/${MAX_MISTAKES}`; if(mistakes&gt;=1) mistakesEl.style.color=&quot;var(--error-text)&quot;; else mistakesEl.style.color=&quot;&quot;; }
+
+  // ---------- Win / lose ----------
+  function checkWin(){
+    for(let i=0;i&lt;81;i++){ if(board[i]!==solution[i]) return false; }
+    won=true; stopTimer();
+    document.getElementById(&quot;winStats&quot;).textContent = `Solved in ${formatTime(seconds)} with ${mistakes} mistake${mistakes===1?&quot;&quot;:&quot;s&quot;}.`;
+    winOverlay.classList.add(&quot;show&quot;);
+    setStatus(&quot;&quot;);
+    updateCounts();
+    return true;
+  }
+
+  function gameOver(lost, msg){
+    if(won) return;
+    won=true; stopTimer();
+    document.getElementById(&quot;winStats&quot;).textContent = msg + &quot; The solution is revealed below.&quot;;
+    // reveal the full solution on loss
+    for(let i=0;i&lt;81;i++){ board[i]=solution[i]; notes[i].clear(); renderCell(i); }
+    winOverlay.classList.add(&quot;show&quot;);
+  }
+
+  function formatTime(s){ const m=Math.floor(s/60), ss=s%60; return `${m}:${ss.toString().padStart(2,&quot;0&quot;)}`; }
+  function startTimer(){ stopTimer(); timerId=setInterval(()=&gt;{ seconds++; timerEl.textContent=formatTime(seconds); },1000); }
+  function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+
+  // ---------- New game ----------
+  function newGame(difficulty){
+    const { solution: sol, puzzle: pz } = generatePuzzle(difficulty || document.getElementById(&quot;difficulty&quot;).value);
+    solution=sol.slice();
+    puzzle=pz.slice();
+    board=pz.slice();
+    notes=Array.from({length:81},()=&gt;new Set());
+    givenMask.fill(false).forEach((_,i)=&gt;givenMask[i]=pz[i]!==0);
+
+    mistakes=0; hintsLeft=3; won=false; selected=-1; seconds=0;
+    timerEl.textContent=&quot;0:00&quot;; updateMistakes(); hintsLeftEl.textContent=hintsLeft;
+    winOverlay.classList.remove(&quot;show&quot;);
+    setStatus(&quot;&quot;);
+
+    buildBoard();
+    for(let i=0;i&lt;81;i++) renderCell(i);
+    updateCounts();
+    startTimer();
+  }
+
+  // ---------- Selection &amp; input ----------
+  function selectCell(i){ if(won) return; selected=i; renderHighlights(); }
+
+  boardEl.addEventListener(&quot;click&quot;, e=&gt;{
+    const cell=e.target.closest(&quot;.cell&quot;); if(!cell) return;
+    selectCell(+cell.dataset.idx);
+  });
+
+  document.getElementById(&quot;newGame&quot;).addEventListener(&quot;click&quot;,()=&gt;newGame());
+  document.getElementById(&quot;playAgain&quot;).addEventListener(&quot;click&quot;,()=&gt;newGame());
+  notesBtn.addEventListener(&quot;click&quot;,toggleNotes);
+  document.querySelector(&#39;.tools [data-tool=&quot;erase&quot;]&#39;).addEventListener(&quot;click&quot;,erase);
+  document.querySelector(&#39;.tools [data-tool=&quot;hint&quot;]&#39;).addEventListener(&quot;click&quot;,useHint);
+
+  // keyboard support
+  document.addEventListener(&quot;keydown&quot;, e=&gt;{
+    if(e.key&gt;=&quot;1&quot; &amp;&amp; e.key&lt;=&quot;9&quot;){ placeNumber(+e.key); return; }
+    if(e.key===&quot;Backspace&quot;||e.key===&quot;Delete&quot;){ erase(); return; }
+    if(e.key.toLowerCase()===&quot;n&quot;){ toggleNotes(); return; }
+    const moves={ ArrowUp:-9,ArrowDown:9,ArrowLeft:-1,ArrowRight:1 };
+    if(moves[e.key]!==undefined){
+      e.preventDefault();
+      let next=selected&lt;0?40:selected+moves[e.key];
+      // prevent wrapping across rows for left/right
+      const r=Math.floor(next/9), c=next%9;
+      if(e.key===&quot;ArrowLeft&quot; &amp;&amp; selected&gt;=0 &amp;&amp; (selected%9)===0){ return; }
+      if(e.key===&quot;ArrowRight&quot;&amp;&amp; selected&gt;=0 &amp;&amp; (selected%9)===8){ return; }
+      next=Math.max(0,Math.min(80,next));
+      selectCell(next);
+    }
+  });
+
+  // ---------- Init ----------
+  buildNumPad();
+  newGame(&quot;medium&quot;);
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
  {}" href="vibe-coding/games/sudoku/qwen3.6-27b-fable-fusion-711-uncensored-heretic-nm-dau-neo-max-mtp.html" style="--delay: 490ms">
       <div class="card-art"><iframe src="vibe-coding/games/sudoku/qwen3.6-27b-fable-fusion-711-uncensored-heretic-nm-dau-neo-max-mtp.html" title="Preview of Qwen3.6 27b Fable Fusion 711 Uncensored Heretic Nm Dau Neo Max Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Sudoku</span><h2>Qwen3.6 27b Fable Fusion 711 Uncensored Heretic Nm Dau Neo Max Mtp</h2><p>A small work in progress.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
@@ -12167,6 +12796,1295 @@ init();
  {}" href="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" style="--delay: 700ms">
       <div class="card-art"><iframe src="vibe-coding/games/cod-clone/qwen3.6-35b-a3b-mtp.html" title="Preview of Qwen3.6 35b A3b Mtp" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
       <div class="card-copy"><span class="eyebrow">Cod Clone</span><h2>Qwen3.6 35b A3b Mtp</h2><p>A vibe-coded COD-clone using qwen3.6-35b-a3b-mtp model</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
+    </a>
+<a class="project-card" data-search="vibe-coding/games/sudoku qwen3.8-27b-no-think.html qwen3.6-27b-fable-fusion-711-uncensored-heretic-nm-dau-neo-max-mtp.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;UTF-8&quot; /&gt;
+  &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; /&gt;
+  &lt;title&gt;Sudoku&lt;/title&gt;
+  &lt;style&gt;
+  /* ===== CSS Custom Properties (Theming) ===== */
+  :root {
+    /* Typography */
+    --font-stack: &#39;Segoe UI&#39;, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  
+    /* Light mode palette */
+    --bg-primary: #f5f7fa;
+    --bg-surface: #ffffff;
+    --text-primary: #1a202c;
+    --text-secondary: #4a5568;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-active: #1d4ed8;
+  
+    /* Board colors */
+    --board-border: #cbd5e0;
+    --cell-border: #e2e8f0;
+    --fixed-cell-bg: #f7fafc;
+    --editable-cell-bg: #ffffff;
+    --conflict-bg: #fee2e2;
+    --conflict-text: #dc2626;
+  
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  /* Dark mode via prefers-color-scheme */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --accent: #60a5fa;
+      --accent-hover: #3b82f6;
+      --accent-active: #2563eb;
+  
+      --board-border: #374151;
+      --cell-border: #4b5563;
+      --fixed-cell-bg: #1e293b;
+      --editable-cell-bg: #0f172a;
+      --conflict-bg: #7f1d1d;
+      --conflict-text: #fca5a5;
+  
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.6);
+    }
+  }
+  
+  /* ===== Base Reset &amp; Typography ===== */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: var(--font-stack);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 1.5rem 1rem;
+  }
+  
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    letter-spacing: -0.02em;
+  }
+  
+  /* ===== Sudoku Board Grid ===== */
+  #sudoku-board {
+    display: grid;
+    grid-template-columns: repeat(9, clamp(32px, 8vw, 45px));
+    grid-template-rows: repeat(9, clamp(32px, 8vw, 45px));
+    gap: 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    background-color: var(--board-border);
+  }
+  
+  /* ===== Individual Cells ===== */
+  #sudoku-board input {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-size: clamp(16px, 3.5vw, 20px);
+    border: 1px solid var(--cell-border);
+    outline: none;
+    background-color: var(--editable-cell-bg);
+    color: var(--accent);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+  }
+  
+  /* Fixed/clue cells */
+  #sudoku-board input.fixed {
+    background-color: var(--fixed-cell-bg);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  
+  /* Conflict highlighting with smooth transition */
+  #sudoku-board input.conflict {
+    background-color: var(--conflict-bg);
+    color: var(--conflict-text);
+    animation: conflict-pulse 0.3s ease-out;
+  }
+  
+  @keyframes conflict-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  
+  /* ===== Micro-interactions: Hover/Focus/Active ===== */
+  #sudoku-board input:not(.fixed):hover {
+    background-color: rgba(59, 130, 246, 0.08);
+  }
+  
+  #sudoku-board input:focus {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    z-index: 1;
+  }
+  
+  #sudoku-board input:not(.fixed):active {
+    transform: scale(0.96);
+  }
+  
+  /* ===== Thicker Borders for 3×3 Subgrids ===== */
+  #sudoku-board input:nth-child(9n+3),
+  #sudoku-board input:nth-child(9n+6) {
+    border-right: 2px solid var(--board-border);
+  }
+  
+  #sudoku-board input:nth-child(n+19):nth-child(-n+27),
+  #sudoku-board input:nth-child(n+46):nth-child(-n+54) {
+    border-bottom: 2px solid var(--board-border);
+  }
+  
+  /* ===== Controls Container ===== */
+  .controls {
+    margin-top: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  label[for=&quot;difficulty-select&quot;] {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  
+  /* ===== Select Styling ===== */
+  #difficulty-select {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--cell-border);
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  #difficulty-select:hover {
+    border-color: var(--accent);
+  }
+  
+  #difficulty-select:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+  }
+  
+  /* ===== Button Styling with Micro-interactions ===== */
+  .controls button {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    border: none;
+    cursor: pointer;
+    background-color: var(--accent);
+    color: #ffffff;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  }
+  
+  .controls button:hover {
+    background-color: var(--accent-hover);
+    box-shadow: var(--shadow-md);
+  }
+  
+  .controls button:active {
+    background-color: var(--accent-active);
+    transform: scale(0.96);
+  }
+  
+  .controls button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+  
+  /* ===== Responsive Layout for Mobile (≤375px) ===== */
+  @media screen and (max-width: 375px) {
+    body {
+      padding: 1rem 0.5rem;
+    }
+  
+    #sudoku-board {
+      grid-template-columns: repeat(9, clamp(28px, calc((100vw - 40px) / 9), 36px));
+      grid-template-rows: repeat(9, clamp(28px, calc((100vw - 40px) / 9), 36px));
+    }
+  
+    #sudoku-board input {
+      font-size: clamp(14px, 4vw, 17px);
+    }
+  
+    .controls {
+      gap: 0.5rem;
+    }
+  
+    .controls button {
+      padding: 0.45rem 1rem;
+      font-size: 0.85rem;
+    }
+  }
+  
+  /* ===== Dark Mode Toggle Button (Optional Enhancement) ===== */
+  .theme-toggle {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid var(--cell-border);
+    background-color: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.1s ease, box-shadow 0.2s ease;
+  }
+  
+  .theme-toggle:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  .theme-toggle:active {
+    transform: scale(0.95);
+  }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Sudoku&lt;/h1&gt;
+
+  &lt;div id=&quot;sudoku-board&quot;&gt;&lt;/div&gt;
+
+  &lt;div class=&quot;controls&quot;&gt;
+    &lt;label for=&quot;difficulty-select&quot;&gt;Difficulty:&lt;/label&gt;
+    &lt;select id=&quot;difficulty-select&quot;&gt;
+      &lt;option value=&quot;easy&quot;&gt;Easy&lt;/option&gt;
+      &lt;option value=&quot;medium&quot; selected&gt;Medium&lt;/option&gt;
+      &lt;option value=&quot;hard&quot;&gt;Hard&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;button id=&quot;solve-btn&quot;&gt;Solve&lt;/button&gt;
+    &lt;button id=&quot;new-game-btn&quot;&gt;New Game&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;script&gt;
+class SudokuGame {
+  constructor() {
+    this.board = [];
+    this.solution = [];
+    this.fixedCells = [];
+  }
+
+  /**
+   * Check if placing num at board[row][col] is valid.
+   * @param {number[][]} board - 9x9 grid (0 means empty)
+   * @param {number} row
+   * @param {number} col
+   * @param {number} num - value 1-9 to place
+   * @returns {boolean}
+   */
+  isValid(board, row, col, num) {
+    // Check row
+    for (let c = 0; c &lt; 9; c++) {
+      if (board[row][c] === num) return false;
+    }
+
+    // Check column
+    for (let r = 0; r &lt; 9; r++) {
+      if (board[r][col] === num) return false;
+    }
+
+    // Check 3x3 box
+    const boxRow = Math.floor(row / 3) * 3;
+    const boxCol = Math.floor(col / 3) * 3;
+    for (let r = boxRow; r &lt; boxRow + 3; r++) {
+      for (let c = boxCol; c &lt; boxCol + 3; c++) {
+        if (board[r][c] === num) return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Fisher-Yates shuffle on array in place.
+   */
+  _shuffle(arr) {
+    for (let i = arr.length - 1; i &gt; 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  }
+
+  /**
+   * Recursive backtracking solver. Fills board in place.
+   * Uses Fisher-Yates shuffle on candidates for randomized output.
+   * @param {number[][]} board - 9x9 grid (0 means empty)
+   * @returns {boolean} true if solved, false if no solution exists
+   */
+  solveBoard(board) {
+    // Find next empty cell
+    let foundEmpty = false;
+    let r = -1, c = -1;
+
+    for (let row = 0; row &lt; 9; row++) {
+      for (let col = 0; col &lt; 9; col++) {
+        if (board[row][col] === 0) {
+          r = row;
+          c = col;
+          foundEmpty = true;
+          break;
+        }
+      }
+      if (foundEmpty) break;
+    }
+
+    // No empty cell means board is complete
+    if (!foundEmpty) return true;
+
+    // Try shuffled candidates 1-9
+    const candidates = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    this._shuffle(candidates);
+
+    for (const num of candidates) {
+      if (this.isValid(board, r, c, num)) {
+        board[r][c] = num;
+
+        if (this.solveBoard(board)) return true;
+
+        // Backtrack
+        board[r][c] = 0;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Deep copy a 9x9 board.
+   */
+  _cloneBoard(board) {
+    return board.map(row =&gt; [...row]);
+  }
+
+  /**
+   * Generate a Sudoku puzzle:
+   * - Start with empty grid, solve to get full solution.
+   * - Remove ~45 cells at random for medium difficulty.
+   * @returns {{board: number[][], solution: number[][], fixedCells: boolean[][]}}
+   */
+  generatePuzzle(difficulty = &#39;medium&#39;) {
+    // Create empty board
+    const emptyBoard = Array.from({ length: 9 }, () =&gt; Array(9).fill(0));
+
+    // Solve to get a complete valid grid
+    this.solveBoard(emptyBoard);
+    const solution = this._cloneBoard(emptyBoard);
+
+    // Start with all cells fixed, then remove based on difficulty
+    const fixedCells = Array.from({ length: 9 }, () =&gt; Array(9).fill(true));
+    const board = this._cloneBoard(solution);
+
+    // Collect all cell positions and shuffle them
+    const positions = [];
+    for (let r = 0; r &lt; 9; r++) {
+      for (let c = 0; c &lt; 9; c++) {
+        positions.push([r, c]);
+      }
+    }
+    this._shuffle(positions);
+
+    // Determine remove count based on difficulty
+    const ranges = { easy: [16, 30], medium: [31, 45], hard: [46, 55] };
+    const [min, max] = ranges[difficulty] || ranges.medium;
+    const removeCount = Math.floor(Math.random() * (max - min + 1)) + min;
+    for (let i = 0; i &lt; removeCount; i++) {
+      const [r, c] = positions[i];
+      board[r][c] = 0;
+      fixedCells[r][c] = false;
+    }
+
+    // Store on instance
+    this.board = board;
+    this.solution = solution;
+    this.fixedCells = fixedCells;
+
+    return { board: this.board, solution: this.solution, fixedCells: this.fixedCells };
+  }
+
+  /**
+   * Render the board into a DOM container.
+   * @param {number[][]} board - 9x9 grid (0 means empty)
+   * @param {boolean[][]} fixedCells - true for clue cells, false for editable
+   */
+  renderBoard(board, fixedCells) {
+    const container = document.getElementById(&#39;sudoku-board&#39;);
+    if (!container) return;
+
+    // Store board reference so input handlers can read/write state
+    this.board = Array.from({ length: 9 }, (_, r) =&gt;
+      Array.from({ length: 9 }, (_, c) =&gt; board[r][c] || 0)
+    );
+    this.fixedCells = fixedCells;
+
+    container.innerHTML = &#39;&#39;;
+
+    // Store references to inputs by position for conflict checking
+    this.cellInputs = [];
+
+    for (let row = 0; row &lt; 9; row++) {
+      this.cellInputs[row] = [];
+      for (let col = 0; col &lt; 9; col++) {
+        const input = document.createElement(&#39;input&#39;);
+        input.type = &#39;text&#39;;
+        input.maxLength = 1;
+        input.dataset.row = String(row);
+        input.dataset.col = String(col);
+
+        if (fixedCells[row][col]) {
+          input.value = board[row][col] || &#39;&#39;;
+          input.classList.add(&#39;fixed&#39;);
+          input.readOnly = true;
+        } else {
+          input.value = board[row][col] ? String(board[row][col]) : &#39;&#39;;
+
+          // Input handler: accept only digits 1–9, then update conflicts in real time
+          input.addEventListener(&#39;input&#39;, () =&gt; this._onCellInput(input));
+          input.addEventListener(&#39;change&#39;, () =&gt; this._onCellChange(input));
+        }
+
+        container.appendChild(input);
+        this.cellInputs[row][col] = input;
+      }
+    }
+  }
+
+  /**
+   * Handle &#39;input&#39; event on editable cells: enforce digits 1–9 only,
+   * update board state immediately, and refresh conflict highlighting in real time.
+   */
+  _onCellInput(input) {
+    const row = parseInt(input.dataset.row, 10);
+    const col = parseInt(input.dataset.col, 10);
+    const val = (input.value || &#39;&#39;).trim();
+
+    if (!val) {
+      // User cleared the cell: allow empty and update state immediately
+      input.value = &#39;&#39;;
+      this.board[row][col] = 0;
+      this._refreshConflictsFor(row, col);
+      return;
+    }
+
+    // Keep only the last character if multiple typed/pasted
+    const ch = val.slice(-1);
+
+    // Accept digits 1–9; otherwise clear
+    if (/^[1-9]$/.test(ch)) {
+      input.value = ch;
+      this.board[row][col] = parseInt(ch, 10);
+      this._refreshConflictsFor(row, col);
+    } else {
+      input.value = &#39;&#39;;
+      this.board[row][col] = 0;
+      this._refreshConflictsFor(row, col);
+    }
+  }
+
+  /**
+   * Handle &#39;change&#39; (and blur) event: sync board state and refresh conflicts.
+   */
+  _onCellChange(input) {
+    const row = parseInt(input.dataset.row, 10);
+    const col = parseInt(input.dataset.col, 10);
+    const val = input.value ? parseInt(input.value, 10) : 0;
+
+    // Update internal board state
+    this.board[row][col] = val;
+
+    // Refresh conflict highlighting for affected scopes
+    this._refreshConflictsFor(row, col);
+  }
+
+  /**
+   * Find all cells in the same row/column/box that share a value with (row,col).
+   * Returns list of [r,c] positions that are in conflict.
+   */
+  _findConflictsForRowCol(row, col) {
+    const val = this.board[row][col];
+    if (!val || val &lt; 1 || val &gt; 9) return [];
+
+    const conflicts = [];
+
+    // Row
+    for (let c = 0; c &lt; 9; c++) {
+      if (c === col &amp;&amp; this.board[row][c] === val) continue;
+      if (this.board[row][c] === val) conflicts.push([row, c]);
+    }
+
+    // Column
+    for (let r = 0; r &lt; 9; r++) {
+      if (r === row &amp;&amp; this.board[r][col] === val) continue;
+      if (this.board[r][col] === val) conflicts.push([r, col]);
+    }
+
+    // Box
+    const boxRow = Math.floor(row / 3) * 3;
+    const boxCol = Math.floor(col / 3) * 3;
+    for (let r = boxRow; r &lt; boxRow + 3; r++) {
+      for (let c = boxCol; c &lt; boxCol + 3; c++) {
+        if ((r === row &amp;&amp; c === col)) continue;
+        if (this.board[r][c] === val) conflicts.push([r, c]);
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Refresh conflict highlighting for all cells affected by changes at (row,col).
+   */
+  _refreshConflictsFor(row, col) {
+    // Clear all existing conflict highlights first
+    if (this.cellInputs) {
+      for (let r = 0; r &lt; 9; r++) {
+        for (let c = 0; c &lt; 9; c++) {
+          const el = this.cellInputs[r][c];
+          if (el &amp;&amp; !el.classList.contains(&#39;fixed&#39;)) {
+            el.classList.remove(&#39;conflict&#39;);
+          }
+        }
+      }
+    }
+
+    // Re-check conflicts for all non-empty, editable cells
+    for (let r = 0; r &lt; 9; r++) {
+      for (let c = 0; c &lt; 9; c++) {
+        const val = this.board[r][c];
+        if (!val || val &lt; 1 || val &gt; 9) continue;
+
+        // Skip fixed cells — they don&#39;t get conflict highlighting
+        const el = this.cellInputs?.[r]?.[c];
+        if (el &amp;&amp; el.classList.contains(&#39;fixed&#39;)) continue;
+
+        const conflicts = this._findConflictsForRowCol(r, c);
+        if (conflicts.length &gt; 0) {
+          // Mark the current cell and its peers as conflicting
+          if (el) el.classList.add(&#39;conflict&#39;);
+          for (const [cr, cc] of conflicts) {
+            const peer = this.cellInputs?.[cr]?.[cc];
+            if (peer &amp;&amp; !peer.classList.contains(&#39;fixed&#39;)) {
+              peer.classList.add(&#39;conflict&#39;);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// On page load: instantiate game, generate puzzle, wire buttons
+if (typeof window !== &#39;undefined&#39;) {
+  let game;
+
+  function startNewPuzzle() {
+    if (!game) game = new SudokuGame();
+    const difficultySelect = document.getElementById(&#39;difficulty-select&#39;);
+    const difficulty = difficultySelect ? difficultySelect.value : &#39;medium&#39;;
+    const { board, fixedCells } = game.generatePuzzle(difficulty);
+    game.renderBoard(board, fixedCells);
+  }
+
+  function solveCurrentPuzzle() {
+    if (!game || !game.solution) return;
+    // Fill all editable cells from the stored solution grid
+    for (let r = 0; r &lt; 9; r++) {
+      for (let c = 0; c &lt; 9; c++) {
+        const el = game.cellInputs?.[r]?.[c];
+        if (!el || el.classList.contains(&#39;fixed&#39;)) continue;
+        el.value = String(game.solution[r][c]);
+        game.board[r][c] = game.solution[r][c];
+      }
+    }
+    // Clear any conflict highlights after solving
+    if (game.cellInputs) {
+      for (let r = 0; r &lt; 9; r++) {
+        for (let c = 0; c &lt; 9; c++) {
+          const el = game.cellInputs[r][c];
+          if (el &amp;&amp; !el.classList.contains(&#39;fixed&#39;)) {
+            el.classList.remove(&#39;conflict&#39;);
+          }
+        }
+      }
+    }
+  }
+
+  window.addEventListener(&#39;DOMContentLoaded&#39;, () =&gt; {
+    startNewPuzzle();
+
+    const solveBtn = document.getElementById(&#39;solve-btn&#39;);
+    if (solveBtn) solveBtn.addEventListener(&#39;click&#39;, solveCurrentPuzzle);
+
+    const newGameBtn = document.getElementById(&#39;new-game-btn&#39;);
+    if (newGameBtn) newGameBtn.addEventListener(&#39;click&#39;, () =&gt; {
+      startNewPuzzle();
+    });
+  });
+}
+
+// Export for Node.js and browser usage
+if (typeof module !== &#39;undefined&#39; &amp;&amp; module.exports) {
+  module.exports = SudokuGame;
+}
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ qwen3.8-27b-no-think.html &lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;UTF-8&quot; /&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; /&gt;
+&lt;title&gt;Sudoku&lt;/title&gt;
+&lt;style&gt;
+  :root {
+    --bg: #f4f6fb;
+    --panel: #ffffff;
+    --ink: #1e2333;
+    --muted: #7a8199;
+    --line: #d5dae6;
+    --grid-thick: #3b425c;
+    --accent: #4f6df5;
+    --accent-soft: #eef1fe;
+    --given: #1e2333;
+    --user: #4f6df5;
+    --error-bg: #ffe8ec;
+    --error-text: #d92b4a;
+    --hint-flash: #fff3bf;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: &quot;Segoe UI&quot;, system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border-radius: 18px;
+    box-shadow: 0 18px 50px rgba(30, 35, 51, .12);
+    padding: 24px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  h1 { font-size: 26px; letter-spacing: .5px; }
+  h1 span { color: var(--accent); }
+
+  .stats { display: flex; gap: 10px; align-items: center; }
+
+  .stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    min-width: 74px;
+  }
+  .stat b { display: block; font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- Board ---- */
+  .board-wrap { position: relative; margin-bottom: 18px; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 3px solid var(--grid-thick);
+    border-radius: 8px;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(16px, 4.2vw, 26px);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    background: #fff;
+    transition: background .08s ease;
+  }
+
+  /* thick lines every 3 cells */
+  .cell:nth-child(9n)   { border-right: none; }
+  .cell.c2, .cell.c5    { border-right: 2px solid var(--grid-thick); }
+  .cell.r2, .cell.r5    { border-bottom: 2px solid var(--grid-thick); }
+
+  /* box shading for visual grouping */
+  .cell.box-a { background: #fbfcff; }
+
+  .cell.selected   { background: var(--accent-soft) !important; }
+  .cell.peer       { background: #f3f5fd; }
+  .cell.same-num   { box-shadow: inset 0 0 0 2px rgba(79,109,245,.35); }
+
+  .cell.given span.val { color: var(--given); font-weight: 600; }
+  .cell.user  span.val { color: var(--user); font-weight: 600; }
+  .cell.error { background: var(--error-bg) !important; }
+  .cell.error span.val { color: var(--error-text); }
+
+  @keyframes flash {
+    0%   { box-shadow: inset 0 0 0 3px #f5b400, 0 0 12px rgba(245,180,0,.6); background: var(--hint-flash); }
+    100% { box-shadow: none; }
+  }
+  .cell.hint { animation: flash 1.1s ease-out; }
+
+  /* pencil notes */
+  .notes {
+    position: absolute;
+    inset: 2px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    pointer-events: none;
+  }
+  .notes span {
+    font-size: clamp(7px, 1.6vw, 10px);
+    color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+
+  /* ---- Controls ---- */
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr) auto / span 10;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  button.num {
+    aspect-ratio: 1/1.25;
+    border: none;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: clamp(16px, 3vw, 20px);
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform .05s ease, background .12s ease;
+  }
+  button.num:hover { background: var(--accent-soft); color: var(--accent); }
+  button.num:active { transform: scale(.94); }
+
+  .tools { display: flex; gap: 8px; margin-bottom: 6px; }
+  .tool-btn {
+    flex: 1;
+    border: none;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13.5px;
+    padding: 9px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .12s ease, transform .05s ease;
+  }
+  .tool-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .tool-btn:active { transform: scale(.97); }
+
+  /* number pad remaining counts */
+  button.num small { display:block; font-size:10px; color:var(--muted); font-weight:500; margin-top:-2px;}
+  button.num.done { opacity:.4; pointer-events:none; background:#eef7ee; }
+
+  .status-bar {
+    text-align:center;
+    min-height: 22px;
+    color: var(--muted);
+    font-size: 13.5px;
+    margin-top: 8px;
+  }
+
+  /* ---- Difficulty + new game row ---- */
+  .top-row { display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+  select.diff {
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+    padding:7px 10px; border-radius:8px; font-size:13.5px; cursor:pointer;
+  }
+
+  /* ---- Win overlay ---- */
+  .overlay {
+    position:absolute; inset:-24px -24px auto -24px; height: calc(100% + 48px);
+    background: rgba(244,246,251,.92); backdrop-filter: blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    border-radius:18px; z-index:5; opacity:0; pointer-events:none; transition:opacity .3s ease;
+  }
+  .overlay.show { opacity:1; pointer-events:auto; }
+  .win-card { text-align:center; background:#fff; padding:26px 34px; border-radius:16px; box-shadow:0 12px 40px rgba(30,35,51,.2); animation:pop .35s ease;}
+  @keyframes pop { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+  .win-card h2 { font-size:24px; margin-bottom:6px; color:var(--accent);}
+  .win-card p { color:var(--muted); font-size:14px; margin-bottom:16px;}
+
+  @media (max-width: 480px) {
+    .app { padding: 16px; }
+    h1 { font-size: 22px; }
+    .stat { min-width: 62px; padding:5px 8px; }
+  }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div class=&quot;app&quot;&gt;
+  &lt;header&gt;
+    &lt;h1&gt;Su&lt;span&gt;doku&lt;/span&gt;&lt;/h1&gt;
+    &lt;div class=&quot;stats&quot;&gt;
+      &lt;div class=&quot;stat&quot;&gt;&lt;b id=&quot;mistakes&quot;&gt;0/3&lt;/b&gt;Mistakes&lt;/div&gt;
+      &lt;div class=&quot;stat&quot;&gt;&lt;b id=&quot;timer&quot;&gt;0:00&lt;/b&gt;Time&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/header&gt;
+
+  &lt;div class=&quot;top-row&quot; style=&quot;margin-bottom:14px;&quot;&gt;
+    &lt;select class=&quot;diff&quot; id=&quot;difficulty&quot; title=&quot;Difficulty (applies to next game)&quot;&gt;
+      &lt;option value=&quot;easy&quot;&gt;Easy&lt;/option&gt;
+      &lt;option value=&quot;medium&quot; selected&gt;Medium&lt;/option&gt;
+      &lt;option value=&quot;hard&quot;&gt;Hard&lt;/option&gt;
+      &lt;option value=&quot;expert&quot;&gt;Expert&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;button class=&quot;tool-btn&quot; id=&quot;newGame&quot; style=&quot;flex:0 1 auto; padding:8px 16px;&quot;&gt;New Game&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;board-wrap&quot;&gt;
+    &lt;div id=&quot;board&quot;&gt;&lt;/div&gt;
+    &lt;div class=&quot;overlay&quot; id=&quot;winOverlay&quot;&gt;
+      &lt;div class=&quot;win-card&quot;&gt;
+        &lt;h2&gt;Puzzle Solved!&lt;/h2&gt;
+        &lt;p id=&quot;winStats&quot;&gt;&lt;/p&gt;
+        &lt;button class=&quot;tool-btn&quot; id=&quot;playAgain&quot; style=&quot;flex:0 1 auto; padding:9px 22px;&quot;&gt;Play Again&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;tools&quot;&gt;
+    &lt;button class=&quot;tool-btn&quot; data-tool=&quot;erase&quot;&gt;Erase ⌫&lt;/button&gt;
+    &lt;button class=&quot;tool-btn&quot; id=&quot;notesBtn&quot; aria-pressed=&quot;false&quot;&gt;Notes ✎&lt;/button&gt;
+    &lt;button class=&quot;tool-btn&quot; data-tool=&quot;hint&quot;&gt;Hint 💡 (&lt;span id=&quot;hintsLeft&quot;&gt;3&lt;/span&gt;)&lt;/button&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;controls&quot; id=&quot;numPad&quot;&gt;&lt;/div&gt;
+
+  &lt;p class=&quot;status-bar&quot; id=&quot;status&quot;&gt;Select a cell, then type or tap a number.&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+(() =&gt; {
+  &quot;use strict&quot;;
+
+  // ---------- State ----------
+  const SIZE = 9;
+  let solution = [];      // flat array length 81 of solved values (0 empty)
+  let puzzle   = [];      // initial givens, 0 where blank
+  let board    = [];      // current user state, 0 where blank
+  let notes    = [];      // each cell: Set of candidate numbers
+  const givenMask = new Array(81).fill(false);
+
+  let selected = -1;       // index or -1
+  let notesMode = false;
+  let mistakes = 0;
+  const MAX_MISTAKES = 3;
+  let hintsLeft = 3;
+  let won = false;
+
+  let seconds = 0, timerId = null;
+
+  // ---------- DOM refs ----------
+  const boardEl   = document.getElementById(&quot;board&quot;);
+  const numPad    = document.getElementById(&quot;numPad&quot;);
+  const statusEl  = document.getElementById(&quot;status&quot;);
+  const mistakesEl= document.getElementById(&quot;mistakes&quot;);
+  const timerEl   = document.getElementById(&quot;timer&quot;);
+  const hintsLeftEl = document.getElementById(&quot;hintsLeft&quot;);
+  const notesBtn  = document.getElementById(&quot;notesBtn&quot;);
+  const winOverlay= document.getElementById(&quot;winOverlay&quot;);
+
+  // ---------- Puzzle generation (backtracking) ----------
+  function shuffle(arr){ for(let i=arr.length-1;i&gt;0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+  function isValid(grid, idx, val){
+    const r = Math.floor(idx/9), c = idx%9;
+    for(let i=0;i&lt;9;i++){ if(grid[r*9+i]===val) return false; if(grid[i*9+c]===val) return false; }
+    const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++){ if(grid[(br+dr)*9+(bc+dc)]===val) return false; }
+    return true;
+  }
+
+  function fillGrid(grid, idx){
+    if(idx===81) return true;
+    if(grid[idx]!==0) return fillGrid(grid, idx+1);
+    const nums = shuffle([1,2,3,4,5,6,7,8,9]);
+    for(const n of nums){
+      if(isValid(grid, idx, n)){ grid[idx]=n; if(fillGrid(grid,idx+1)) return true; grid[idx]=0; }
+    }
+    return false;
+  }
+
+  function countSolutions(grid, limit=2){
+    // find first empty cell and recurse with solution counting (for uniqueness)
+    let idx=-1;
+    for(let i=0;i&lt;81;i++){ if(grid[i]===0){idx=i;break;} }
+    if(idx===-1) return 1;
+    const r=Math.floor(idx/9), c=idx%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    let count=0;
+    for(let n=1;n&lt;=9;n++){
+      let ok=true;
+      for(let i=0;i&lt;9 &amp;&amp; ok;i++){ if(grid[r*9+i]===n || grid[i*9+c]===n) ok=false; }
+      if(ok){ const rr=Math.floor(r/3)*3, cc=Math.floor(c/3)*3;
+        for(let dr=0;dr&lt;3&amp;&amp;ok;dr++)for(let dc=0;dc&lt;3&amp;&amp;ok;dc++){ if(grid[(rr+dr)*9+(cc+dc)]===n) ok=false; }
+      }
+      if(ok){ grid[idx]=n; count+=countSolutions(grid, limit); grid[idx]=0; if(count&gt;=limit) break; }
+    }
+    return count;
+  }
+
+  function generatePuzzle(difficulty){
+    const targetClues = { easy:42, medium:34, hard:28, expert:25 };
+    let cluesTarget = targetClues[difficulty] ?? 30;
+
+    // Build a full valid solution.
+    const sol = new Array(81).fill(0);
+    fillGrid(sol, 0);
+
+    // Remove cells symmetrically (point symmetry) until we hit the clue count or uniqueness breaks.
+    let grid = sol.slice();
+    let clues = 81;
+    const positions = shuffle([...Array(81).keys()]);
+
+    for(const idx of positions){
+      if(clues &lt;= cluesTarget) break;
+      // try removing this cell and its symmetric partner
+      const symIdx = (8 - Math.floor(idx/9)) * 9 + (8 - (idx % 9));
+      const removedVals = [];
+
+      for(const p of [idx, symIdx]){
+        if(grid[p]!==0){ grid[p]=0; clues--; }
+      }
+
+      // check uniqueness on a copy; if not unique, restore the clues
+      const test = grid.slice();
+      if(countSolutions(test) !== 1){
+        grid[idx]   = sol[idx];
+        grid[symIdx]= sol[symIdx];
+        clues += (sol[idx]!==0 ? 1 : 0) + (sol[symIdx]!==0 &amp;&amp; idx!==symIdx ? 1 : 0);
+      }
+
+      if(clues &lt;= cluesTarget) break;
+    }
+
+    return { solution: sol, puzzle: grid };
+  }
+
+  // ---------- Rendering helpers ----------
+  function cellClass(i){
+    const r=Math.floor(i/9), c=i%9;
+    let cls=&quot;cell&quot;;
+    if(c===2||c===5) cls+=&quot; c&quot;+(c+1);   // thick right border markers (col index 3,6 -&gt; nth-child handled separately)
+    return cls;
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = &quot;&quot;;
+    for(let i=0;i&lt;81;i++){
+      const r=Math.floor(i/9), c=i%9;
+      const div=document.createElement(&quot;div&quot;);
+      div.className=&quot;cell&quot;;
+      // thick borders via nth-child handled in CSS using data attrs:
+      if(c===2||c===5) div.classList.add(&quot;thick-r&quot;);
+      if(r===2||r===5) div.classList.add(&quot;thick-b&quot;);
+      // box shading for 3x3 blocks (checkerboard style on alternating boxes)
+      const br=Math.floor(r/3), bc=Math.floor(c/3);
+      if((br+bc)%2===0) div.classList.add(&quot;box-a&quot;);
+
+      div.dataset.idx=i;
+      div.innerHTML = `&lt;span class=&quot;val&quot;&gt;&lt;/span&gt;&lt;div class=&quot;notes&quot; aria-hidden=&quot;true&quot;&gt;${&quot;&lt;span&gt;&lt;/span&gt;&quot;.repeat(9)}&lt;/div&gt;`;
+      boardEl.appendChild(div);
+    }
+  }
+
+  function renderCell(i){
+    const el=boardEl.children[i];
+    if(!el) return;
+    const valSpan=el.querySelector(&quot;.val&quot;);
+    const notesWrap=el.querySelector(&quot;.notes&quot;);
+    const v=board[i];
+    givenMask[i] ? el.classList.add(&quot;given&quot;) : el.classList.remove(&quot;given&quot;);
+
+    // value or empty
+    valSpan.textContent = v!==0 ? String(v) : &quot;&quot;;
+    if(v===0){
+      el.classList.toggle(&quot;user&quot;, false);
+    } else {
+      el.classList.toggle(&quot;user&quot;, !givenMask[i]);
+    }
+
+    // notes (only shown when cell is empty and not in given)
+    const set=notes[i];
+    let html=&quot;&quot;;
+    for(let n=1;n&lt;=9;n++){ html += `&lt;span&gt;${set.has(n)?n:&quot;&quot;}&lt;/span&gt;`; }
+    notesWrap.innerHTML = v===0 &amp;&amp; !givenMask[i] ? html : &quot;&quot;;
+
+    // error highlight: user value conflicts with solution or duplicates in row/col/box
+    let isErr=false;
+    if(v!==0 &amp;&amp; !givenMask[i]){
+      const r=Math.floor(i/9), c=i%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+      for(let k=0;k&lt;9;k++){
+        if(k===i) continue;
+        if(board[r*9+k]===v || board[k*9+c]===v){ isErr=true; break; }
+      }
+      if(!isErr){ for(let dr=0;dr&lt;3&amp;&amp;!isErr;dr++)for(let dc=0;dc&lt;3&amp;&amp; !isErr;dc++){ const p=(br+dr)*9+(bc+dc); if(p!==i &amp;&amp; board[p]===v) isErr=true; } }
+    }
+    el.classList.toggle(&quot;error&quot;, isErr);
+
+    // selection / peer highlight
+    el.classList.remove(&quot;selected&quot;,&quot;peer&quot;,&quot;same-num&quot;);
+  }
+
+  function renderHighlights(){
+    const sel=boardEl.children[selected];
+    if(selected&lt;0) return;
+    const r=Math.floor(selected/9), c=selected%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let i=0;i&lt;81;i++){
+      boardEl.children[i].classList.remove(&quot;peer&quot;,&quot;same-num&quot;);
+    }
+    const selVal = board[selected];
+    for(let k=0;k&lt;9;k++){
+      if(k!==c) markPeer(r*9+k);
+      if(k!==r) markPeer(k*9+c);
+    }
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++){ const p=(br+dr)*9+(bc+dc); if(p!==selected) boardEl.children[p].classList.add(&quot;peer&quot;); }
+
+    // same number highlight across the whole grid
+    if(selVal!==0){ for(let i=0;i&lt;81;i++) if(board[i]===selVal &amp;&amp; i!==selected) boardEl.children[i].classList.add(&quot;same-num&quot;); }
+
+    sel.classList.add(&quot;selected&quot;);
+  }
+  function markPeer(i){ const el=boardEl.children[i]; if(el) el.classList.add(&quot;peer&quot;); }
+
+  // ---------- Number pad with remaining counts ----------
+  function buildNumPad(){
+    numPad.innerHTML=&quot;&quot;;
+    for(let n=1;n&lt;=9;n++){
+      const b=document.createElement(&quot;button&quot;);
+      b.className=&quot;num&quot;;
+      b.dataset.n=n;
+      b.innerHTML=`${n}&lt;small id=&quot;cnt-${n}&quot;&gt;&lt;/small&gt;`;
+      b.addEventListener(&quot;click&quot;,()=&gt;placeNumber(n));
+      numPad.appendChild(b);
+    }
+  }
+
+  function updateCounts(){
+    for(let n=1;n&lt;=9;n++){
+      let placed=0;
+      for(let i=0;i&lt;81;i++) if(board[i]===n) placed++;
+      const el=document.getElementById(&quot;cnt-&quot;+n);
+      if(el){ el.textContent = 9-placed&gt;0 ? (9-placed) : &quot;&quot;; }
+      numPad.children[n-1].classList.toggle(&quot;done&quot;, placed&gt;=9);
+    }
+  }
+
+  // ---------- Game actions ----------
+  function setStatus(msg, isError=false){ statusEl.textContent=msg; statusEl.style.color = isError? &quot;var(--error-text)&quot; : &quot;var(--muted)&quot;; }
+
+  function placeNumber(n){
+    if(won || selected&lt;0) return;
+    const i=selected;
+    if(givenMask[i]){ setStatus(&quot;That cell is a given clue.&quot;, true); flashError(i); return; }
+
+    // notes mode: toggle candidate
+    if(notesMode &amp;&amp; board[i]===0){
+      notes[i].has(n)?notes[i].delete(n):notes[i].add(n);
+      renderCell(i); updateCounts(); setStatus(&quot;Notes updated.&quot;); return;
+    }
+
+    const val = (board[i]===n) ? 0 : n; // tapping same number clears it
+    board[i]=val;
+    notes[i].clear();
+
+    if(val!==0){
+      if(solution[i]!==val){
+        mistakes++;
+        updateMistakes();
+        setStatus(&quot;That&#39;s not the right value.&quot;, true);
+        flashError(i);
+        if(mistakes&gt;=MAX_MISTAKES) return gameOver(false, &quot;Too many mistakes — game over.&quot;);
+      } else {
+        // clear notes for peers that contain this number (auto-cleanup)
+        autoCleanNotes(i, val);
+        setStatus(&quot;&quot;);
+      }
+    }
+
+    renderCell(i);
+    updateCounts();
+    checkWin();
+  }
+
+  function flashError(i){ const el=boardEl.children[i]; if(el){ el.classList.remove(&quot;hint&quot;); void el.offsetWidth; el.style.transition=&quot;none&quot;; setTimeout(()=&gt;el.style.transition=&quot;&quot;,10);} }
+
+  function autoCleanNotes(idx, val){
+    const r=Math.floor(idx/9), c=idx%9, br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+    for(let k=0;k&lt;9;k++){ notes[r*9+k].delete(val); notes[k*9+c].delete(val); }
+    for(let dr=0;dr&lt;3;dr++)for(let dc=0;dc&lt;3;dc++) notes[(br+dr)*9+(bc+dc)].delete(val);
+  }
+
+  function erase(){
+    if(won || selected&lt;0) return;
+    const i=selected;
+    if(givenMask[i]) { setStatus(&quot;Given clues can&#39;t be erased.&quot;, true); return; }
+    board[i]=0; notes[i].clear(); renderCell(i); updateCounts(); setStatus(&quot;&quot;);
+  }
+
+  function useHint(){
+    if(won) return;
+    if(hintsLeft&lt;=0){ setStatus(&quot;No hints left.&quot;, true); return; }
+    // pick a random empty or wrong cell, fill with solution value
+    const candidates=[];
+    for(let i=0;i&lt;81;i++){ if(!givenMask[i] &amp;&amp; board[i]!==solution[i]) candidates.push(i); }
+    if(candidates.length===0){ setStatus(&quot;Nothing to hint — you&#39;re all set!&quot;, true); return; }
+    const pick=candidates[Math.floor(Math.random()*candidates.length)];
+    hintsLeft--; hintsLeftEl.textContent=hintsLeft;
+    board[pick]=solution[pick]; notes[pick].clear(); autoCleanNotes(pick, solution[pick]);
+    selected=pick; renderCell(pick); updateCounts(); renderHighlights();
+    const el=boardEl.children[pick]; el.classList.remove(&quot;hint&quot;); void el.offsetWidth; el.classList.add(&quot;hint&quot;);
+    setStatus(`Hint: ${solution[pick]} goes here.`);
+    checkWin();
+  }
+
+  function toggleNotes(){
+    notesMode=!notesMode;
+    notesBtn.setAttribute(&quot;aria-pressed&quot;, String(notesMode));
+    notesBtn.style.background = notesMode? &quot;var(--accent)&quot; : &quot;&quot;;
+    notesBtn.style.color      = notesMode? &quot;#fff&quot; : &quot;&quot;;
+    setStatus(notesMode?&quot;Notes mode ON — tap numbers to mark candidates.&quot;:&quot;Notes mode OFF.&quot;);
+  }
+
+  function updateMistakes(){ mistakesEl.textContent=`${mistakes}/${MAX_MISTAKES}`; if(mistakes&gt;=1) mistakesEl.style.color=&quot;var(--error-text)&quot;; else mistakesEl.style.color=&quot;&quot;; }
+
+  // ---------- Win / lose ----------
+  function checkWin(){
+    for(let i=0;i&lt;81;i++){ if(board[i]!==solution[i]) return false; }
+    won=true; stopTimer();
+    document.getElementById(&quot;winStats&quot;).textContent = `Solved in ${formatTime(seconds)} with ${mistakes} mistake${mistakes===1?&quot;&quot;:&quot;s&quot;}.`;
+    winOverlay.classList.add(&quot;show&quot;);
+    setStatus(&quot;&quot;);
+    updateCounts();
+    return true;
+  }
+
+  function gameOver(lost, msg){
+    if(won) return;
+    won=true; stopTimer();
+    document.getElementById(&quot;winStats&quot;).textContent = msg + &quot; The solution is revealed below.&quot;;
+    // reveal the full solution on loss
+    for(let i=0;i&lt;81;i++){ board[i]=solution[i]; notes[i].clear(); renderCell(i); }
+    winOverlay.classList.add(&quot;show&quot;);
+  }
+
+  function formatTime(s){ const m=Math.floor(s/60), ss=s%60; return `${m}:${ss.toString().padStart(2,&quot;0&quot;)}`; }
+  function startTimer(){ stopTimer(); timerId=setInterval(()=&gt;{ seconds++; timerEl.textContent=formatTime(seconds); },1000); }
+  function stopTimer(){ if(timerId){ clearInterval(timerId); timerId=null; } }
+
+  // ---------- New game ----------
+  function newGame(difficulty){
+    const { solution: sol, puzzle: pz } = generatePuzzle(difficulty || document.getElementById(&quot;difficulty&quot;).value);
+    solution=sol.slice();
+    puzzle=pz.slice();
+    board=pz.slice();
+    notes=Array.from({length:81},()=&gt;new Set());
+    givenMask.fill(false).forEach((_,i)=&gt;givenMask[i]=pz[i]!==0);
+
+    mistakes=0; hintsLeft=3; won=false; selected=-1; seconds=0;
+    timerEl.textContent=&quot;0:00&quot;; updateMistakes(); hintsLeftEl.textContent=hintsLeft;
+    winOverlay.classList.remove(&quot;show&quot;);
+    setStatus(&quot;&quot;);
+
+    buildBoard();
+    for(let i=0;i&lt;81;i++) renderCell(i);
+    updateCounts();
+    startTimer();
+  }
+
+  // ---------- Selection &amp; input ----------
+  function selectCell(i){ if(won) return; selected=i; renderHighlights(); }
+
+  boardEl.addEventListener(&quot;click&quot;, e=&gt;{
+    const cell=e.target.closest(&quot;.cell&quot;); if(!cell) return;
+    selectCell(+cell.dataset.idx);
+  });
+
+  document.getElementById(&quot;newGame&quot;).addEventListener(&quot;click&quot;,()=&gt;newGame());
+  document.getElementById(&quot;playAgain&quot;).addEventListener(&quot;click&quot;,()=&gt;newGame());
+  notesBtn.addEventListener(&quot;click&quot;,toggleNotes);
+  document.querySelector(&#39;.tools [data-tool=&quot;erase&quot;]&#39;).addEventListener(&quot;click&quot;,erase);
+  document.querySelector(&#39;.tools [data-tool=&quot;hint&quot;]&#39;).addEventListener(&quot;click&quot;,useHint);
+
+  // keyboard support
+  document.addEventListener(&quot;keydown&quot;, e=&gt;{
+    if(e.key&gt;=&quot;1&quot; &amp;&amp; e.key&lt;=&quot;9&quot;){ placeNumber(+e.key); return; }
+    if(e.key===&quot;Backspace&quot;||e.key===&quot;Delete&quot;){ erase(); return; }
+    if(e.key.toLowerCase()===&quot;n&quot;){ toggleNotes(); return; }
+    const moves={ ArrowUp:-9,ArrowDown:9,ArrowLeft:-1,ArrowRight:1 };
+    if(moves[e.key]!==undefined){
+      e.preventDefault();
+      let next=selected&lt;0?40:selected+moves[e.key];
+      // prevent wrapping across rows for left/right
+      const r=Math.floor(next/9), c=next%9;
+      if(e.key===&quot;ArrowLeft&quot; &amp;&amp; selected&gt;=0 &amp;&amp; (selected%9)===0){ return; }
+      if(e.key===&quot;ArrowRight&quot;&amp;&amp; selected&gt;=0 &amp;&amp; (selected%9)===8){ return; }
+      next=Math.max(0,Math.min(80,next));
+      selectCell(next);
+    }
+  });
+
+  // ---------- Init ----------
+  buildNumPad();
+  newGame(&quot;medium&quot;);
+})();
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+ {}" href="vibe-coding/games/sudoku/qwen3.8-27b-no-think.html" style="--delay: 770ms">
+      <div class="card-art"><iframe src="vibe-coding/games/sudoku/qwen3.8-27b-no-think.html" title="Preview of Qwen3.8 27b No Think" loading="lazy" tabindex="-1"></iframe><span class="arrow" aria-hidden="true">↗</span></div>
+      <div class="card-copy"><span class="eyebrow">Sudoku</span><h2>Qwen3.8 27b No Think</h2><p>A small work in progress.</p><span class="visit">Explore work <span aria-hidden="true">→</span></span></div>
     </a></div></section>
 <section class="collection-section" aria-labelledby="section-requirements"><div class="collection-head"><h2 id="section-requirements">Requirements</h2><span class="count">00 works</span></div><div class="grid"><div class="empty-state"><span class="empty-mark">✦</span><h2>No work here yet.</h2><p>Add a folder containing any <strong>.html</strong> file to feature it in this section.</p></div></div></section></section>
   </main>
